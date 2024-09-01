@@ -1,6 +1,6 @@
 {
   "name": "perfect-payload",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "type": "module",
   "description": "JSON Data Validation",
   "main": "index.js",
