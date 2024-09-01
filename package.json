@@ -1,0 +1,36 @@
+{
+  "name": "perfect-payload",
+  "version": "1.0.1",
+  "type": "module",
+  "description": "JSON Data Validation",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kiranpoojary/perfect-payload.git"
+  },
+  "keywords": [
+    "validation",
+    "payload",
+    "api",
+    "data",
+    "request-body",
+    "response",
+    "express",
+    "validate"
+  ],
+  "author": "Kiran Poojary",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kiranpoojary/perfect-payload/issues"
+  },
+  "homepage": "https://github.com/kiranpoojary/perfect-payload#readme",
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@babel/preset-env": "^7.25.4",
+    "babel-jest": "^29.7.0",
+    "jest": "^29.7.0"
+  }
+}
