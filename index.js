@@ -499,7 +499,7 @@ export function perfectPayloadV1(
               };
             }
 
-            const { errors = [] } = dataValidatorV1(
+            const { errors = [] } = perfectPayloadV1(
               attributeValue,
               objectAttrRules
             );
@@ -523,7 +523,7 @@ export function perfectPayloadV1(
                 if (Object.keys(data).includes(attr)) {
                   newData = { ...newData, [attr]: data?.[attr] };
                 }
-                const { errors = [] } = dataValidatorV1(newData, {
+                const { errors = [] } = perfectPayloadV1(newData, {
                   [attr]: newRule,
                 });
                 rowErrors = [...rowErrors, ...errors];
