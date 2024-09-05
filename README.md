@@ -11,7 +11,7 @@ This module provides a robust framework for validating data objects based on def
 5. [Default Values](#default-values)
 6. [Examples and Usage](#default-values)
 
-## 1. Quick Signht
+## 1. Quick Sights
 
 usage:
 
@@ -24,8 +24,8 @@ input:
 
 1. **data :**  your payload object (required *)
 2. **dataValidationRule:** validation rule object (required *)
-3. **validPayloadResponse:** response you want if all attribute validation passed (Optional)
-4. **inValidPayloadResponse:** response you want any validation fails (Optional)
+3. **validPayloadResponse:** response object you want it back on all validation passed (Optional)
+4. **inValidPayloadResponse:** response object you want it back on any validation fails (Optional)
 
 **Default Valid Payload Response:**
 
@@ -36,18 +36,18 @@ input:
 }
 ```
 
-
-**Default In-Valid Payload Response:**
+**Default Invalid Payload Response:**
 
 ```javascript
 {  
    statusCode:400,  
    valid:false,  
    message:"One or more attribute values are invalid",  
-   errors:["array of each attribute error messages"]  
+   errors:["minSalary must be less than maxSalary"]  
 }
 ```
 
+**Note:** If inValidPayloadResponse is passed, then it will be returned along with errors property(avoid proper attribute in your inValidPayloadResponse object)
 
 ## 2. Available Validation Attributes
 
@@ -123,7 +123,6 @@ If not explicitly specified, the following default values are applied:
 - **objectAttr**: Ignored.
 - **dependency**: Ignored.
 
-
 ## 6. Examples And Usage
 
 ### 1. Sample Validation Rule
@@ -137,6 +136,7 @@ sample-1
     allowNull: false,
     type: "string",
     minLength: 3,
+    minLengthError:"First name must have minimum 3 characters."
   },
   lastName: {
     mandatory: false,
@@ -162,11 +162,10 @@ sample-1
 };
 ```
 
-
-
 sample-2
 
 ```javascript
+
 {
   id: {
     mandatory: true,
@@ -303,12 +302,9 @@ sample-2
 }
 ```
 
-
-
 ### 2. Usage
 
 #### 1. creating your route with middleware and validation rule:
-
 
 ```javascript
 //Here validatePayload is your middleware function where you're invoking perfect payload
@@ -334,7 +330,6 @@ export const validatePayload = ({ rule }) => {
 };
 ```
 
-
 #### Usage in venila js code
 
 ```javascript
@@ -343,7 +338,6 @@ const result = perfectPayloadV1(dataObject, ruleObject);
 console.log(result?.statusCode)
 console.log(result?.isValid)
 ```
-
 
 ---
 
