@@ -1,72 +1,3 @@
-//-----------AVAILABLE VALIATION ATTRIBUTES-----------
-// mandatory             : required data
-// allowNull             : allow null
-// allowEmptyObject      : allow {}
-// allowEmptyArray       : allow []
-// elementType           : define array elements type(values: AVAILABLE TYPE Section)
-// regex                 : custom regex validation
-// type                  : refer AVAILABLE TYPE Section
-// minLength             : for string length
-// maxLength             : for string length
-// preventDecimal        : decimal/fraction value nor allowed
-// min                   : for minimum number value
-// max                   : for maximum number value
-// range                 : for number, between 2 range
-// objectAttr            : for nested object validation
-// dependency            : for dependent field validation(ex: min and max salary,etc. customizable)
-//
-//
-//--------AVAILABLE TYPE-----------
-// number                               :
-// string                               :
-// boolean                              :
-// email                                :
-// url                                  :
-// enum                                 : array of values(heterogeneous values supported)
-// uuid/uuidv1/uuidv3/uuidv4/uuidv5     : "uuid" for all version and version specific type for specific version
-// objectId                             :
-// array                                : can validate element tyoe with elementType attribute(PENDING)
-// object                               : supports nested object validation as well with objectAttr attribute
-//
-//
-// ---------Custom Error Message Attributes-----------
-// mandatoryError       : string
-// allowNullError       : string
-// emptyObjectError     : string
-// emptyArrayError      : string
-// elementTypeError     : string
-// regexError           : string
-// typeError            : string
-// minLengthError       : string
-// maxLengthError       : string
-// preventDecimalError  : string
-// minError             : string
-// maxError             : string
-// rangeError           : string
-//
-//
-//--------DEFAULT VALUES IF NOT SPECIFIED-----------
-// mandatory             : false
-// allowNull             : true
-// allowEmptyObject      : true
-// allowEmptyArray       : true
-// elementType           : ignored
-// regex                 : ignored
-// type                  : ignored
-// minLength             : ignored
-// maxLength             : ignored
-// preventDecimal        : false(allows both decimal and integer)
-// min                   : ignored
-// max                   : ignored
-// range                 : ignored
-// objectAttr            : ignored
-// dependency            : ignored
-//
-//
-//
-//
-//
-
 export function perfectPayloadV1(
   data = {},
   dataValidationRule = {},
@@ -105,11 +36,7 @@ export function perfectPayloadV1(
           break;
         case "allowNull":
           //allowNull value check
-          if (
-            addNextError &&
-            ruleName === "allowNull" &&
-            attributeValue == null
-          ) {
+          if (addNextError && attributeValue == null) {
             if (!dataValidationRule?.[attributeName]?.[ruleName]) {
               addNextError = false;
               rowErrors.push(
@@ -121,7 +48,7 @@ export function perfectPayloadV1(
           break;
         case "allowEmptyObject":
           //allowEmptyObject check
-          if (addNextError && ruleName === "allowEmptyObject") {
+          if (addNextError) {
             if (
               !attributeRules?.["allowEmptyObject"] &&
               Object.keys(attributeValue).length == 0
@@ -137,7 +64,7 @@ export function perfectPayloadV1(
           break;
         case "allowEmptyArray":
           //allowEmptyArray check
-          if (addNextError && ruleName === "allowEmptyArray") {
+          if (addNextError) {
             if (
               !attributeRules?.["allowEmptyArray"] &&
               isArray(attributeValue) &&
@@ -152,15 +79,25 @@ export function perfectPayloadV1(
           }
 
           break;
-        case "elementType":
+        case "elementConstraints":
           //check array ele type
-          if (addNextError && ruleName === "elementType") {
+          if (addNextError) {
             if (isArray(attributeValue) && attributeValue?.length > 0) {
-              const hasInvalid = false;
-              if (hasInvalid) {
+              let elementError = false;
+              for (const element of attributeValue) {
+                const { statusCode = 200, errors } = perfectPayloadV1(
+                  { [attributeName]: element },
+                  { [attributeName]: attributeRules[ruleName] }
+                );
+                if (statusCode == 400) {
+                  elementError = errors?.[0];
+                  // addNextError = false;
+                  break;
+                }
+              }
+              if (elementError) {
                 rowErrors.push(
-                  attributeRules?.["elementTypeError"] ||
-                    `invalid type values in ${attributePath}`
+                  attributeRules?.["elementConstraintsError"] || elementError
                 );
                 addNextError = false;
               }
@@ -170,7 +107,7 @@ export function perfectPayloadV1(
           break;
         case "regex":
           //custom regex check
-          if (addNextError && ruleName === "regex") {
+          if (addNextError) {
             if (!isPassedRegex(attributeRules[ruleName], attributeValue)) {
               rowErrors.push(
                 attributeRules?.["regexError"] ||
@@ -182,7 +119,7 @@ export function perfectPayloadV1(
           break;
         case "type":
           //value type check
-          if (addNextError && ruleName === "type") {
+          if (addNextError) {
             if (attributeValue == null && nullAllowed) {
               addNextError = true;
             } else {
@@ -358,7 +295,7 @@ export function perfectPayloadV1(
           break;
         case "minLength":
           //minimum string length check
-          if (addNextError && ruleName === "minLength") {
+          if (addNextError) {
             if (attributeValue == null && nullAllowed) {
               addNextError = true;
             } else if (typeof attributeValue == "string") {
@@ -369,15 +306,16 @@ export function perfectPayloadV1(
                 );
               addNextError = false;
             } else {
-              throw new Error(
-                `perfect-payload:- minLength is applied only on string type values, found ${typeof attributeValue} type`
+              rowErrors.push(
+                `${attributePath} value should be a string type(minLength specified)`
               );
+              addNextError = false;
             }
           }
           break;
         case "maxLength":
           //max string length check
-          if (addNextError && ruleName === "maxLength") {
+          if (addNextError) {
             if (attributeValue == null && nullAllowed) {
               addNextError = true;
             } else if (typeof attributeValue == "string") {
@@ -388,15 +326,16 @@ export function perfectPayloadV1(
                 );
               addNextError = false;
             } else {
-              throw new Error(
-                `perfect-payload:- maxLength is applied only on string type values, found ${typeof attributeValue} type`
+              rowErrors.push(
+                `${attributePath} value should be a string type(maxLength specified)`
               );
+              addNextError = false;
             }
           }
           break;
         case "preventDecimal":
           //preventFraction
-          if (addNextError && ruleName === "preventDecimal") {
+          if (addNextError) {
             if (attributeValue == null && nullAllowed) {
               addNextError = true;
             } else if (!isNumber(attributeValue)) {
@@ -415,7 +354,7 @@ export function perfectPayloadV1(
           break;
         case "min":
           //minimum value  check
-          if (addNextError && ruleName === "min") {
+          if (addNextError) {
             if (attributeValue == null && nullAllowed) {
               addNextError = true;
             } else if (!isNumber(attributeValue)) {
@@ -438,7 +377,7 @@ export function perfectPayloadV1(
           break;
         case "max":
           //maximum value  check
-          if (addNextError && ruleName === "max") {
+          if (addNextError) {
             if (attributeValue == null && nullAllowed) {
               addNextError = true;
             } else if (!isNumber(attributeValue)) {
@@ -461,7 +400,7 @@ export function perfectPayloadV1(
           break;
         case "range":
           //value range  check
-          if (addNextError && ruleName === "range") {
+          if (addNextError) {
             if (attributeValue == null && nullAllowed) {
               addNextError = true;
             } else if (!isNumber(attributeValue)) {
@@ -487,7 +426,7 @@ export function perfectPayloadV1(
           break;
         case "objectAttr":
           //nested object attributes check
-          if (addNextError && ruleName === "objectAttr") {
+          if (addNextError) {
             const allObjectAttr = Object.keys(attributeRules?.[ruleName]);
             const objectAttrRules = {};
             for (const attr of allObjectAttr) {
@@ -509,7 +448,7 @@ export function perfectPayloadV1(
           break;
         case "dependency":
           //dependency check
-          if (addNextError && ruleName === "dependency") {
+          if (addNextError) {
             const allDependencyAttr = Object.keys(attributeRules?.[ruleName]);
             for (const attr of allDependencyAttr) {
               if (

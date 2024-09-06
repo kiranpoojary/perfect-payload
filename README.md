@@ -57,7 +57,7 @@ These attributes define the rules that can be applied to each field in the data 
 - **allowNull**: Allows `null` values.
 - **allowEmptyObject**: Allows empty objects `{}`.
 - **allowEmptyArray**: Allows empty arrays `[]`.
-- **elementType**: Defines the type of elements in an array (refer to [Available Types](#available-types) section).
+- **elementConstraints**: Defines the constraints of elements in an array (refer to [Available Types](#available-types) section).
 - **regex**: Applies custom regular expression validation.
 - **type**: Specifies the type of the field (refer to [Available Types](#available-types) section).
 - **minLength**: Minimum length for string values.
@@ -82,7 +82,7 @@ These types can be used in the `type` attribute to specify the expected data typ
 - **uuid**: Valid UUIDs (supports all versions).
 - **uuidv1/uuidv3/uuidv4/uuidv5**: Version-specific UUID validation.
 - **objectId**: Valid MongoDB ObjectIds.
-- **array**: Validates arrays, with support for element type validation using `elementType`.
+- **array**: Validates arrays, with support for element type validation using `elementConstraints`.
 - **object**: Validates objects, including nested objects using `objectAttr`.
 
 ## 4. Custom Error Message Attributes
@@ -93,7 +93,7 @@ You can define custom error messages for various validation failures using these
 - **allowNullError**: Custom message when a `null` value is not allowed.
 - **emptyObjectError**: Custom message when an empty object `{}` is not allowed.
 - **emptyArrayError**: Custom message when an empty array `[]` is not allowed.
-- **elementTypeError**: Custom message when array elements do not match the specified type.
+- **elementConstraintsError**: Custom message when array elements do not match the passed constraints.
 - **regexError**: Custom message when a value does not match the specified regex pattern.
 - **typeError**: Custom message when a value does not match the specified type.
 - **minLengthError**: Custom message when a string value is shorter than the minimum length.
@@ -111,7 +111,7 @@ If not explicitly specified, the following default values are applied:
 - **allowNull**: `true` (allows `null` values).
 - **allowEmptyObject**: `true` (allows empty objects `{}`).
 - **allowEmptyArray**: `true` (allows empty arrays `[]`).
-- **elementType**: Ignored.
+- **elementConstraints**: Ignored.
 - **regex**: Ignored.
 - **type**: Ignored.
 - **minLength**: Ignored.
@@ -166,7 +166,6 @@ sample-2
 
 ```javascript
 
-{
   id: {
     mandatory: true,
     allowNull: true,
@@ -217,10 +216,14 @@ sample-2
     range: "0-100",
   },
   allMarks: {
-    type: "array",
-    elementType: "string",
-    allowEmptyArray: false,
-  },
+      type: "array",
+      allowEmptyArray: false,
+      elementConstraints: {
+        type: "number",
+        allowNull: false,
+        range: "0-100",
+      },
+  }
   totalScore: {
     type: "number",
     dependency: {
