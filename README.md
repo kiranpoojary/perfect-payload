@@ -47,7 +47,7 @@ input:
 }
 ```
 
-**Note:** If inValidPayloadResponse is passed, then it will be returned along with errors property(avoid proper attribute in your inValidPayloadResponse object)
+**Note:** If inValidPayloadResponse is passed, then it will be returned along with errors property(avoid error attribute in your inValidPayloadResponse object)
 
 ## 2. Available Validation Attributes
 
@@ -57,7 +57,7 @@ These attributes define the rules that can be applied to each field in the data 
 - **allowNull**: Allows `null` values.
 - **allowEmptyObject**: Allows empty objects `{}`.
 - **allowEmptyArray**: Allows empty arrays `[]`.
-- **elementConstraints**: Defines the constraints of elements in an array (refer to [Available Types](#available-types) section).
+- **elementConstraints**: Defines the constraints of elements in an array (refer to [Available ](#available-types)[Attributes](#available-validation-attributes) section).
 - **regex**: Applies custom regular expression validation.
 - **type**: Specifies the type of the field (refer to [Available Types](#available-types) section).
 - **minLength**: Minimum length for string values.
@@ -165,7 +165,7 @@ sample-1
 sample-2
 
 ```javascript
-
+{
   id: {
     mandatory: true,
     allowNull: true,
@@ -216,14 +216,14 @@ sample-2
     range: "0-100",
   },
   allMarks: {
-      type: "array",
-      allowEmptyArray: false,
-      elementConstraints: {
-        type: "number",
-        allowNull: false,
-        range: "0-100",
-      },
-  }
+    type: "array",
+    allowEmptyArray: false,
+    elementConstraints: {
+      type: "number",
+      allowNull: false,
+      range: "0-100",
+    },
+  },
   totalScore: {
     type: "number",
     dependency: {
