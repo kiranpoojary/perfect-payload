@@ -480,7 +480,8 @@ export function perfectPayloadV1(
           break;
       }
 
-      validatedPayload[attributeName] = attributeValue;
+      if (rowErrors.length == 0)
+        validatedPayload[attributeName] = attributeValue;
     }
   }
 
