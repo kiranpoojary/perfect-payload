@@ -16,34 +16,39 @@ This module provides a robust framework for validating data objects based on def
 usage:
 
 ```javascript
-import { perfectPayloadV1 } from"perfect-payload";
-const {statucCode=400, ...result}=perfectPayloadV1(data,dataValidationRule,validPayloadResponse,inValidPayloadResponse)
+import { perfectPayloadV1 } from "perfect-payload";
+const { statucCode = 400, ...result } = perfectPayloadV1(
+  data,
+  dataValidationRule,
+  validPayloadResponse,
+  inValidPayloadResponse
+);
 ```
 
 input:
 
-1. **data :**  your payload object (required *)
-2. **dataValidationRule:** validation rule object (required *)
+1. **data :** your payload object (required \*)
+2. **dataValidationRule:** validation rule object (required \*)
 3. **validPayloadResponse:** response object you want it back on all validation passed (Optional)
 4. **inValidPayloadResponse:** response object you want it back on any validation fails (Optional)
 
 **Default Valid Payload Response:**
 
 ```javascript
-{ 
-   statusCode:200, 
-   valid:true 
+{
+   statusCode:200,
+   valid:true
 }
 ```
 
 **Default Invalid Payload Response:**
 
 ```javascript
-{  
-   statusCode:400,  
-   valid:false,  
-   message:"One or more attribute values are invalid",  
-   errors:["minSalary must be less than maxSalary"]  
+{
+   statusCode:400,
+   valid:false,
+   message:"One or more attribute values are invalid",
+   errors:["minSalary must be less than maxSalary"]
 }
 ```
 
@@ -178,10 +183,8 @@ sample-2
   },
   firstName: {
     mandatory: true,
-    allowNull: false,
     type: "string",
     minLength: 3,
-    maxLength: 6,
   },
   lastName: {
     mandatory: false,
@@ -202,7 +205,6 @@ sample-2
     preventDecimal: true,
   },
   email: {
-    type: "email",
     regex: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
   },
   githubLink: {
@@ -307,10 +309,10 @@ sample-2
 
 ### 2. Usage
 
-#### 1. creating your route with middleware and validation rule:
+#### 1. creating your route with payload validation middleware
 
 ```javascript
-//Here validatePayload is your middleware function where you're invoking perfect payload
+//Here validatePayload is your middleware function, where you're invoking perfect payload
 router.post(
   "/payload-validation",
   validatePayload({ rule: <your validation rule json object> }),
@@ -318,28 +320,48 @@ router.post(
 );
 ```
 
-#### 2. Use perfect-payload in your middleware like below
+#### 2.1 Use perfect-payload in your middleware like below(for MODULE JS)
 
 ```javascript
 import { perfectPayloadV1 } from "perfect-payload";
 
 export const validatePayload = ({ rule }) => {
   return (req, res, next) => {
-    const { statusCode, ...response } = perfectPayloadV1(req?.body, rule);
-    if (+statusCode >= 200 && +statusCode <= 299) {
-      next();
-    } else res.status(statusCode).json(response);
+    try {
+      const { statusCode, ...response } = perfectPayloadV1(req?.body, rule);
+      if (+statusCode >= 200 && +statusCode <= 299) {
+        next();
+      } else res.status(statusCode).json(response);
+    } catch (error) {
+      console.error("Error validating payload", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
   };
 };
 ```
 
-#### Usage in venila js code
+#### 2.2 Use perfect-payload in your middleware like below(for COMMON JS)
 
 ```javascript
-import { perfectPayloadV1 } from "perfect-payload";
-const result = perfectPayloadV1(dataObject, ruleObject);
-console.log(result?.statusCode)
-console.log(result?.isValid)
+function validatePayload({ rule }) {
+  return async (req, res, next) => {
+    try {
+      const { perfectPayloadV1 } = await import("perfect-payload");
+      const { statusCode, ...response } = perfectPayloadV1(req?.body, rule);
+
+      if (+statusCode >= 200 && +statusCode <= 299) {
+        next();
+      } else {
+        res.status(statusCode).json(response);
+      }
+    } catch (error) {
+      console.error("Error validating payload", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  };
+}
+
+module.exports = { validatePayload };
 ```
 
 ---
