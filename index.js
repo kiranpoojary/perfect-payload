@@ -8,6 +8,7 @@ export function perfectPayloadV1(
     message: "One or more attribute values are invalid",
   }
 ) {
+  let validatedPayload = {};
   let rowErrors = [];
   for (const attributeName in dataValidationRule) {
     let addNextError = true;
@@ -478,13 +479,15 @@ export function perfectPayloadV1(
         default:
           break;
       }
+
+      validatedPayload[attributeName] = attributeValue;
     }
   }
 
   if (rowErrors?.length) {
     return { ...inValidPayloadResponse, errors: rowErrors };
   } else {
-    return validPayloadResponse;
+    return { ...validPayloadResponse, validatedPayload };
   }
 }
 

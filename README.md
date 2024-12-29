@@ -37,9 +37,13 @@ input:
 ```javascript
 {
    statusCode:200,
-   valid:true
+   valid:true,
+   validatedPayload:{...}
 }
 ```
+
+**Note:** you can use validatedPayload to overwrite your existing `req.body` or create new req attribute(`req.validatedBody=validatedPayload`) to access in your API logic
+
 
 **Default Invalid Payload Response:**
 
@@ -330,6 +334,7 @@ export const validatePayload = ({ rule }) => {
     try {
       const { statusCode, ...response } = perfectPayloadV1(req?.body, rule);
       if (+statusCode >= 200 && +statusCode <= 299) {
+        req.validatedBody=response?.validatedPayload
         next();
       } else res.status(statusCode).json(response);
     } catch (error) {
@@ -350,6 +355,7 @@ function validatePayload({ rule }) {
       const { statusCode, ...response } = perfectPayloadV1(req?.body, rule);
 
       if (+statusCode >= 200 && +statusCode <= 299) {
+        req.validatedBody=response?.validatedPayload
         next();
       } else {
         res.status(statusCode).json(response);
