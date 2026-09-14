@@ -1,0 +1,124 @@
+name: Stage npm package
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Setup npm
+        run: npm install --global npm@11.19.1
+
+      - name: Verify Node and npm versions
+        run: |
+          node -v
+          npm -v
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Get package information
+        id: package
+        shell: bash
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          if [[ "$VERSION" == *"-beta."* ]]; then
+            echo "release_type=beta" >> "$GITHUB_OUTPUT"
+          else
+            echo "release_type=production" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "Package: $NAME"
+          echo "Version: $VERSION"
+
+      - name: Check whether version changed
+        id: version
+        shell: bash
+        run: |
+          CURRENT_VERSION="${{ steps.package.outputs.version }}"
+
+          PREVIOUS_VERSION=$(git show HEAD^:package.json 2>/dev/null | \
+            node -e "
+              let data = '';
+              process.stdin.on('data', chunk => data += chunk);
+              process.stdin.on('end', () => {
+                try {
+                  console.log(JSON.parse(data).version || '');
+                } catch {
+                  console.log('');
+                }
+              });
+            ")
+
+          echo "Previous version: $PREVIOUS_VERSION"
+          echo "Current version:  $CURRENT_VERSION"
+
+          if [[ "$CURRENT_VERSION" == "$PREVIOUS_VERSION" ]]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Package version did not change. Nothing to stage."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "New package version detected."
+          fi
+
+      - name: Check whether version is already published
+        if: steps.version.outputs.changed == 'true'
+        id: published
+        shell: bash
+        run: |
+          NAME="${{ steps.package.outputs.name }}"
+          VERSION="${{ steps.package.outputs.version }}"
+
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "$NAME@$VERSION is already published."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "$NAME@$VERSION is not published."
+          fi
+
+      - name: Stage beta release
+        if: >
+          steps.version.outputs.changed == 'true' &&
+          steps.published.outputs.exists == 'false' &&
+          steps.package.outputs.release_type == 'beta'
+        run: |
+          echo "Staging beta ${{ steps.package.outputs.version }}"
+          npm stage publish --tag beta
+
+      - name: Stage production release
+        if: >
+          steps.version.outputs.changed == 'true' &&
+          steps.published.outputs.exists == 'false' &&
+          steps.package.outputs.release_type == 'production'
+        run: |
+          echo "Staging production ${{ steps.package.outputs.version }}"
+          npm stage publish
