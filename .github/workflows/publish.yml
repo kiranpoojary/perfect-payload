@@ -10,14 +10,102 @@ permissions:
   id-token: write
 
 jobs:
-  stage:
+  # ==========================================================
+  # 1. SETUP & PACKAGE INFO
+  # ==========================================================
+  package-info:
+    name: Package Info
+    runs-on: ubuntu-latest
+
+    outputs:
+      name: ${{ steps.package.outputs.name }}
+      version: ${{ steps.package.outputs.version }}
+      release_type: ${{ steps.package.outputs.release_type }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Read package information
+        id: package
+        shell: bash
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          if [[ "$VERSION" == *"-beta"* ]]; then
+            RELEASE_TYPE="beta"
+          else
+            RELEASE_TYPE="production"
+          fi
+
+          echo "release_type=$RELEASE_TYPE" >> "$GITHUB_OUTPUT"
+
+          echo "Package:      $NAME"
+          echo "Version:      $VERSION"
+          echo "Release type: $RELEASE_TYPE"
+          echo "Branch:       $GITHUB_REF_NAME"
+
+  # ==========================================================
+  # 2. VALIDATE BRANCH + VERSION
+  # ==========================================================
+  validate-release:
+    name: Validate Release
+    needs: package-info
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate branch and version
+        shell: bash
+        run: |
+          BRANCH="$GITHUB_REF_NAME"
+          VERSION="${{ needs.package-info.outputs.version }}"
+          RELEASE_TYPE="${{ needs.package-info.outputs.release_type }}"
+
+          echo "Branch:       $BRANCH"
+          echo "Version:      $VERSION"
+          echo "Release type: $RELEASE_TYPE"
+
+          if [[ "$BRANCH" == "main" ]]; then
+
+            if [[ "$RELEASE_TYPE" != "production" ]]; then
+              echo "::error::main branch cannot stage beta versions."
+              echo "::error::Current version: $VERSION"
+              exit 1
+            fi
+
+            echo "Valid production release."
+
+          else
+
+            if [[ "$RELEASE_TYPE" != "beta" ]]; then
+              echo "::error::Non-main branches must use a beta version."
+              echo "::error::Current version: $VERSION"
+              echo "::error::Expected something like 1.3.0-beta.0"
+              exit 1
+            fi
+
+            echo "Valid beta release."
+
+          fi
+
+  # ==========================================================
+  # 3. INSTALL DEPENDENCIES
+  # ==========================================================
+  install:
+    name: Install Dependencies
+    needs:
+      - package-info
+      - validate-release
+
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
-        with:
-          fetch-depth: 2
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -37,118 +125,172 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+  # ==========================================================
+  # 4. RUN TESTS
+  # ==========================================================
+  test:
+    name: Run Tests
+    needs: install
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Run tests
         run: npm test -- --passWithNoTests
 
-      - name: Get package information
-        id: package
+  # ==========================================================
+  # 5. CHECK NPM VERSION
+  # ==========================================================
+  check-npm:
+    name: Check npm Version
+    needs:
+      - package-info
+      - validate-release
+      - test
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Check whether version already exists
         shell: bash
         run: |
-          NAME=$(node -p "require('./package.json').name")
-          VERSION=$(node -p "require('./package.json').version")
+          NAME="${{ needs.package-info.outputs.name }}"
+          VERSION="${{ needs.package-info.outputs.version }}"
 
-          echo "name=$NAME" >> "$GITHUB_OUTPUT"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-          echo "Package: $NAME"
-          echo "Version: $VERSION"
-          echo "Branch:  $GITHUB_REF_NAME"
-
-      # -------------------------------------------------------
-      # MAIN BRANCH
-      # Must contain a production version.
-      # Example: 1.3.0
-      # -------------------------------------------------------
-      - name: Validate production version
-        if: github.ref_name == 'main'
-        shell: bash
-        run: |
-          VERSION="${{ steps.package.outputs.version }}"
-
-          if [[ "$VERSION" == *"-beta"* ]]; then
-            echo "::error::main branch cannot publish a beta version ($VERSION)."
-            exit 1
-          fi
-
-          echo "Valid production version detected: $VERSION"
-
-      # -------------------------------------------------------
-      # NON-MAIN BRANCH
-      # Must contain a beta version.
-      # Example: 1.3.0-beta.0
-      # -------------------------------------------------------
-      - name: Validate beta version
-        if: github.ref_name != 'main'
-        shell: bash
-        run: |
-          VERSION="${{ steps.package.outputs.version }}"
-
-          if [[ "$VERSION" != *"-beta"* ]]; then
-            echo "::error::Non-main branches can only publish beta versions."
-            echo "::error::Current version is $VERSION."
-            echo "::error::Expected a version such as 1.3.0-beta.0."
-            exit 1
-          fi
-
-          echo "Valid beta version detected: $VERSION"
-
-      # -------------------------------------------------------
-      # CHECK NPM
-      # Determines whether this exact version is already live.
-      # -------------------------------------------------------
-      - name: Check whether version is already published
-        id: published
-        shell: bash
-        run: |
-          NAME="${{ steps.package.outputs.name }}"
-          VERSION="${{ steps.package.outputs.version }}"
-
-          echo "Checking npm for $NAME@$VERSION..."
+          echo "Checking npm..."
+          echo "$NAME@$VERSION"
 
           if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "$NAME@$VERSION is already published."
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "$NAME@$VERSION has not been published."
+            echo "::error::$NAME@$VERSION is already published."
+            echo "::error::Update package.json to a new version."
+            exit 1
           fi
 
-      # -------------------------------------------------------
-      # FAIL IF VERSION ALREADY EXISTS
-      # npm versions are immutable, so require a new version.
-      # -------------------------------------------------------
-      - name: Fail if version is already published
-        if: steps.published.outputs.exists == 'true'
+          echo "$NAME@$VERSION is not published."
+          echo "Release is ready for manual staging."
+
+  # ==========================================================
+  # 6. MANUAL APPROVAL + NPM STAGE
+  #
+  # IMPORTANT:
+  # Create a GitHub Environment named:
+  #
+  # npm-stage
+  #
+  # Repository:
+  # Settings -> Environments -> New environment -> npm-stage
+  #
+  # Add yourself as a Required Reviewer.
+  #
+  # GitHub will pause BEFORE this job runs.
+  # ==========================================================
+  stage-npm:
+    name: Manual Approval & Stage npm
+    needs:
+      - package-info
+      - check-npm
+
+    runs-on: ubuntu-latest
+
+    environment:
+      name: npm-stage
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Setup npm
+        run: npm install --global npm@11.19.1
+
+      - name: Verify release
         shell: bash
         run: |
-          echo "::error::${{ steps.package.outputs.name }}@${{ steps.package.outputs.version }} is already published."
-          echo "::error::Update package.json to a new version before publishing."
-          exit 1
+          echo "======================================"
+          echo "READY TO STAGE"
+          echo "======================================"
+          echo "Package: ${{ needs.package-info.outputs.name }}"
+          echo "Version: ${{ needs.package-info.outputs.version }}"
+          echo "Type:    ${{ needs.package-info.outputs.release_type }}"
+          echo "Branch:  $GITHUB_REF_NAME"
+          echo "======================================"
 
-      # -------------------------------------------------------
-      # BETA RELEASE
-      # Any branch except main + unpublished beta version.
-      # -------------------------------------------------------
-      - name: Stage beta release
+      # ------------------------------------------------------
+      # BETA
+      # Any branch other than main
+      # Example: 1.3.0-beta.0
+      # ------------------------------------------------------
+      - name: Stage Beta Package
         if: >
           github.ref_name != 'main' &&
-          steps.published.outputs.exists == 'false'
-        shell: bash
+          needs.package-info.outputs.release_type == 'beta'
         run: |
-          echo "Branch: $GITHUB_REF_NAME"
-          echo "Staging beta ${{ steps.package.outputs.version }}"
+          echo "Staging beta package..."
+          echo "${{ needs.package-info.outputs.name }}@${{ needs.package-info.outputs.version }}"
+
           npm stage publish --tag beta
 
-      # -------------------------------------------------------
-      # PRODUCTION RELEASE
-      # main + unpublished non-beta version.
-      # -------------------------------------------------------
-      - name: Stage production release
+      # ------------------------------------------------------
+      # PRODUCTION
+      # main branch only
+      # Example: 1.3.0
+      # ------------------------------------------------------
+      - name: Stage Production Package
         if: >
           github.ref_name == 'main' &&
-          steps.published.outputs.exists == 'false'
-        shell: bash
+          needs.package-info.outputs.release_type == 'production'
         run: |
-          echo "Branch: main"
-          echo "Staging production ${{ steps.package.outputs.version }}"
+          echo "Staging production package..."
+          echo "${{ needs.package-info.outputs.name }}@${{ needs.package-info.outputs.version }}"
+
           npm stage publish
+
+  # ==========================================================
+  # 7. COMPLETION
+  # ==========================================================
+  complete:
+    name: npm Package Staged
+    needs:
+      - package-info
+      - stage-npm
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Staging completed
+        run: |
+          echo "======================================"
+          echo "NPM STAGING COMPLETED"
+          echo "======================================"
+          echo "Package: ${{ needs.package-info.outputs.name }}"
+          echo "Version: ${{ needs.package-info.outputs.version }}"
+          echo "Type:    ${{ needs.package-info.outputs.release_type }}"
+          echo ""
+          echo "The package has been staged on npm."
+          echo "Complete the final approval on npm."
+          echo "======================================"
