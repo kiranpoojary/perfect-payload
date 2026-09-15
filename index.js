@@ -578,7 +578,7 @@ function perfectPayloadStructured(
         // ==================================================
 
         case "mandatory":
-          if (isMandatoryField && !attrExist) {
+          if (isMandatoryField && (!attrExist || attributeValue === "")) {
             addNextError = false;
 
             addStructuredError(
@@ -599,7 +599,7 @@ function perfectPayloadStructured(
         // ==================================================
 
         case "allowNull":
-          if (addNextError && attributeValue == null) {
+          if (addNextError && attributeValue === null) {
             if (!attributeRules?.[ruleName]) {
               addNextError = false;
 
