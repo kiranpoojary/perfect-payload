@@ -3,7 +3,7 @@ name: Stage npm package
 on:
   push:
     branches:
-      - main
+      - "**"
 
 permissions:
   contents: read
@@ -50,75 +50,105 @@ jobs:
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-          if [[ "$VERSION" == *"-beta."* ]]; then
-            echo "release_type=beta" >> "$GITHUB_OUTPUT"
-          else
-            echo "release_type=production" >> "$GITHUB_OUTPUT"
-          fi
-
           echo "Package: $NAME"
           echo "Version: $VERSION"
+          echo "Branch:  $GITHUB_REF_NAME"
 
-      - name: Check whether version changed
-        id: version
+      # -------------------------------------------------------
+      # MAIN BRANCH
+      # Must contain a production version.
+      # Example: 1.3.0
+      # -------------------------------------------------------
+      - name: Validate production version
+        if: github.ref_name == 'main'
         shell: bash
         run: |
-          CURRENT_VERSION="${{ steps.package.outputs.version }}"
+          VERSION="${{ steps.package.outputs.version }}"
 
-          PREVIOUS_VERSION=$(git show HEAD^:package.json 2>/dev/null | \
-            node -e "
-              let data = '';
-              process.stdin.on('data', chunk => data += chunk);
-              process.stdin.on('end', () => {
-                try {
-                  console.log(JSON.parse(data).version || '');
-                } catch {
-                  console.log('');
-                }
-              });
-            ")
-
-          echo "Previous version: $PREVIOUS_VERSION"
-          echo "Current version:  $CURRENT_VERSION"
-
-          if [[ "$CURRENT_VERSION" == "$PREVIOUS_VERSION" ]]; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "Package version did not change. Nothing to stage."
-          else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "New package version detected."
+          if [[ "$VERSION" == *"-beta"* ]]; then
+            echo "::error::main branch cannot publish a beta version ($VERSION)."
+            exit 1
           fi
 
+          echo "Valid production version detected: $VERSION"
+
+      # -------------------------------------------------------
+      # NON-MAIN BRANCH
+      # Must contain a beta version.
+      # Example: 1.3.0-beta.0
+      # -------------------------------------------------------
+      - name: Validate beta version
+        if: github.ref_name != 'main'
+        shell: bash
+        run: |
+          VERSION="${{ steps.package.outputs.version }}"
+
+          if [[ "$VERSION" != *"-beta"* ]]; then
+            echo "::error::Non-main branches can only publish beta versions."
+            echo "::error::Current version is $VERSION."
+            echo "::error::Expected a version such as 1.3.0-beta.0."
+            exit 1
+          fi
+
+          echo "Valid beta version detected: $VERSION"
+
+      # -------------------------------------------------------
+      # CHECK NPM
+      # Determines whether this exact version is already live.
+      # -------------------------------------------------------
       - name: Check whether version is already published
-        if: steps.version.outputs.changed == 'true'
         id: published
         shell: bash
         run: |
           NAME="${{ steps.package.outputs.name }}"
           VERSION="${{ steps.package.outputs.version }}"
 
+          echo "Checking npm for $NAME@$VERSION..."
+
           if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
             echo "$NAME@$VERSION is already published."
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "$NAME@$VERSION is not published."
+            echo "$NAME@$VERSION has not been published."
           fi
 
+      # -------------------------------------------------------
+      # FAIL IF VERSION ALREADY EXISTS
+      # npm versions are immutable, so require a new version.
+      # -------------------------------------------------------
+      - name: Fail if version is already published
+        if: steps.published.outputs.exists == 'true'
+        shell: bash
+        run: |
+          echo "::error::${{ steps.package.outputs.name }}@${{ steps.package.outputs.version }} is already published."
+          echo "::error::Update package.json to a new version before publishing."
+          exit 1
+
+      # -------------------------------------------------------
+      # BETA RELEASE
+      # Any branch except main + unpublished beta version.
+      # -------------------------------------------------------
       - name: Stage beta release
         if: >
-          steps.version.outputs.changed == 'true' &&
-          steps.published.outputs.exists == 'false' &&
-          steps.package.outputs.release_type == 'beta'
+          github.ref_name != 'main' &&
+          steps.published.outputs.exists == 'false'
+        shell: bash
         run: |
+          echo "Branch: $GITHUB_REF_NAME"
           echo "Staging beta ${{ steps.package.outputs.version }}"
           npm stage publish --tag beta
 
+      # -------------------------------------------------------
+      # PRODUCTION RELEASE
+      # main + unpublished non-beta version.
+      # -------------------------------------------------------
       - name: Stage production release
         if: >
-          steps.version.outputs.changed == 'true' &&
-          steps.published.outputs.exists == 'false' &&
-          steps.package.outputs.release_type == 'production'
+          github.ref_name == 'main' &&
+          steps.published.outputs.exists == 'false'
+        shell: bash
         run: |
+          echo "Branch: main"
           echo "Staging production ${{ steps.package.outputs.version }}"
           npm stage publish
