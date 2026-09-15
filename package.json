@@ -1,8 +1,8 @@
 {
   "name": "perfect-payload",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "type": "module",
-  "description": "rich json validator",
+  "description": "Lightweight JSON payload validation library with structured errors, nested validation, field paths, and customizable validation rules.",
   "main": "index.js",
   "scripts": {
     "test": "jest"
@@ -12,14 +12,22 @@
     "url": "git+https://github.com/kiranpoojary/perfect-payload.git"
   },
   "keywords": [
-    "validation",
+    "payload-validation",
+    "request-validation",
+    "nodejs-validation",
+    "javascript-validation",
+    "api-validation",
+    "object-validation",
+    "json-validation",
+    "schema-validation",
+    "express-validation",
+    "fastify-validation",
+    "validator",
     "payload",
     "api",
     "data",
     "request-body",
-    "response",
-    "express",
-    "validate"
+    "express"
   ],
   "author": "Kiran Poojary",
   "license": "ISC",
