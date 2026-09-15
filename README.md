@@ -78,7 +78,7 @@ console.log(result);
 
 ```
 
-**\*\*Note:\*\*** The validatedPayload contains only the fields defined in the
+**Note:** The validatedPayload contains only the fields defined in the
 
 schema, automatically filtering out any extra attributes. You can use it
 
@@ -152,7 +152,7 @@ import { perfectPayloadV1 } from "perfect-payload";
 
 `perfectPayloadV1()` is deprecated and will no longer be supported after
 
-**\*\*\\\*\\\*March 31, 2027\\\*\\\*\*\***.
+**March 31, 2027**.
 
 Existing applications can continue using it during the migration period,
 
@@ -182,7 +182,7 @@ errors: [
 ];
 ```
 
-**\*\*Note:\*\*** If an inValidPayloadResponse is provided, the system returns
+**Note:** If an inValidPayloadResponse is provided, the system returns
 
 it alongside an automatically generated errors property. Do not include
 
@@ -198,7 +198,7 @@ object.
 
 Marks a field as required(even empty string also not allowed)
 
-**\*\*Default:\*\*** `false`, the field is not required.
+**Default:** `false`, the field is not required.
 
 ```js
 const rules = {
@@ -216,7 +216,7 @@ Error code: `REQUIRED`
 
 Controls whether `null` values are accepted.
 
-**\*\*Default:\*\*** `true` , `null` values are allowed.
+**Default:** `true` , `null` values are allowed.
 
 Example:
 
@@ -236,7 +236,7 @@ Error code: `NULL_NOT_ALLOWED`
 
 Controls whether an empty object `{}` is accepted.
 
-**\*\*Default:\*\*** `true`, empty objects are allowed.
+**Default:** `true`, empty objects are allowed.
 
 Example:
 
@@ -258,7 +258,7 @@ Error code: `EMPTY_OBJECT_NOT_ALLOWED`
 
 Controls whether an empty array `[]` is accepted.
 
-**\*\*Default:\*\*** `true`, empty arrays are allowed.
+**Default:** `true`, empty arrays are allowed.
 
 Example:
 
@@ -406,7 +406,7 @@ INVALID_OBJECT_ID
 
 Validates a value using a regular expression.
 
-**\*\*Default:\*\*** Not applied when omitted.
+**Default:** Not applied when omitted.
 
 Example:
 
@@ -428,7 +428,7 @@ Error code: `REGEX_MISMATCH`
 
 Defines the minimum allowed string length.
 
-**\*\*Default:\*\*** Not applied when omitted.
+**Default:** Not applied when omitted.
 
 Example:
 
@@ -450,7 +450,7 @@ Error code: `MIN_LENGTH`
 
 Defines the maximum allowed string length.
 
-**\*\*Default:\*\*** Not applied when omitted.
+**Default:** Not applied when omitted.
 
 Example:
 
@@ -472,7 +472,7 @@ Error code: `MAX_LENGTH`
 
 Prevents decimal numbers.
 
-**\*\*Default:\*\*** `false` both integer and decimal numbers are allowed.
+**Default:** `false` both integer and decimal numbers are allowed.
 
 Example:
 
@@ -494,7 +494,7 @@ Error code: `DECIMAL_NOT_ALLOWED`
 
 Defines the minimum allowed numeric value.
 
-**\*\*Default:\*\*** Not applied when omitted.
+**Default:** Not applied when omitted.
 
 Example:
 
@@ -516,7 +516,7 @@ Error code: `MIN_VALUE`
 
 Defines the maximum allowed numeric value.
 
-**\*\*Default:\*\*** Not applied when omitted.
+**Default:** Not applied when omitted.
 
 Example:
 
@@ -538,7 +538,7 @@ Error code: `MAX_VALUE`
 
 Defines the allowed numeric range.
 
-**\*\*Default:\*\*** Not applied when omitted.
+**Default:** Not applied when omitted.
 
 Example:
 
