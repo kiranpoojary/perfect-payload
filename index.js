@@ -608,7 +608,7 @@ function perfectPayloadStructured(
                 attributePath,
                 "NULL_NOT_ALLOWED",
                 attributeRules?.["allowNullError"] ||
-                  `value null/'' not valid for attribute ${attributePath}`,
+                  `value null not valid for attribute ${attributePath}`,
               );
             }
           }
