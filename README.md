@@ -179,7 +179,7 @@ object.
 
 ### `mandatory`
 
-Marks a field as required.
+Marks a field as required(even empty string also not allowed)
 
 **Default:** `false`, the field is not required.
 
