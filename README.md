@@ -19,30 +19,24 @@ import { perfectPayload } from "perfect-payload";
 
 const payload = {
   name: "Kiran",
-
   email: "kiran@example.com",
-
   age: 29,
 };
 
 const validationRules = {
   name: {
     mandatory: true,
-
     type: "string",
   },
 
   email: {
     mandatory: true,
-
     type: "email",
   },
 
   age: {
     mandatory: true,
-
     type: "number",
-
     min: 18,
   },
 };
@@ -57,21 +51,13 @@ console.log(result);
 ```js
 
 {
-
   statusCode: 200,
-
   valid: true,
-
   validatedPayload: {
-
     name: "Kiran",
-
     email: "kiran@example.com",
-
     age: 29
-
   }
-
 }
 ```
 
@@ -85,27 +71,16 @@ to safely overwrite request.body or assign it to a new request property
 ```js
 
 {
-
   statusCode: 400,
-
   valid: false,
-
   message: "One or more attribute values are invalid",
-
   errors: [
-
     {
-
       path: "email",
-
       code: "INVALID_EMAIL",
-
       message: "Invalid email format for attribute email"
-
     }
-
   ]
-
 }
 ```
 
@@ -114,13 +89,9 @@ Each error returned by `perfectPayload()` contains:
 ```js
 
 {
-
   path: "field.path",
-
   code: "ERROR_CODE",
-
   message: "Human readable validation message"
-
 }
 ```
 
@@ -160,9 +131,7 @@ while the new `perfectPayload()` API returns structured errors:
 errors: [
   {
     path: "email",
-
     code: "INVALID_EMAIL",
-
     message: "Invalid email format for attribute email",
   },
 ];
@@ -227,7 +196,6 @@ Example:
 const rules = {
   address: {
     type: "object",
-
     allowEmptyObject: false,
   },
 };
@@ -249,7 +217,6 @@ Example:
 const rules = {
   products: {
     type: "array",
-
     allowEmptyArray: false,
   },
 };
@@ -268,31 +235,18 @@ Supported values:
 ```text
 
 number
-
 string
-
 boolean
-
 email
-
 url
-
 enum
-
 uuid
-
 uuidv1
-
 uuidv3
-
 uuidv4
-
 uuidv5
-
 objectId
-
 array
-
 object
 ```
 
@@ -303,11 +257,9 @@ const rules = {
   age: {
     type: "number",
   },
-
   email: {
     type: "email",
   },
-
   active: {
     type: "boolean",
   },
@@ -328,7 +280,6 @@ Example:
 const rules = {
   status: {
     type: "enum",
-
     enumValues: ["active", "inactive", "blocked", 1, 0],
   },
 };
@@ -348,7 +299,6 @@ Example:
 const rules = {
   status: {
     type: "enum",
-
     enumValues: ["active", "inactive", "blocked"],
   },
 };
@@ -361,23 +311,14 @@ Possible error codes for types:
 ```text
 
 INVALID_TYPE
-
 INVALID_EMAIL
-
 INVALID_URL
-
 INVALID_ENUM
-
 INVALID_UUID
-
 INVALID_UUID_V1
-
 INVALID_UUID_V3
-
 INVALID_UUID_V4
-
 INVALID_UUID_V5
-
 INVALID_OBJECT_ID
 ```
 
@@ -395,7 +336,6 @@ Example:
 const rules = {
   employeeCode: {
     type: "string",
-
     regex: /^[A-Z]{3}[0-9]{3}$/,
   },
 };
@@ -417,7 +357,6 @@ Example:
 const rules = {
   username: {
     type: "string",
-
     minLength: 5,
   },
 };
@@ -439,7 +378,6 @@ Example:
 const rules = {
   username: {
     type: "string",
-
     maxLength: 20,
   },
 };
@@ -461,7 +399,6 @@ Example:
 const rules = {
   quantity: {
     type: "number",
-
     preventDecimal: true,
   },
 };
@@ -483,7 +420,6 @@ Example:
 const rules = {
   age: {
     type: "number",
-
     min: 18,
   },
 };
@@ -505,7 +441,6 @@ Example:
 const rules = {
   quantity: {
     type: "number",
-
     max: 100,
   },
 };
@@ -527,7 +462,6 @@ Example:
 const rules = {
   marks: {
     type: "number",
-
     range: "0-100",
   },
 };
@@ -547,10 +481,8 @@ Example:
 const rules = {
   marks: {
     type: "array",
-
     elementConstraints: {
       type: "number",
-
       range: "0-100",
     },
   },
@@ -564,13 +496,9 @@ Example error:
 {
 
   path: "marks[2]",
-
   code: "OUT_OF_RANGE",
-
   message:
-
     "Attribute marks[2] should have a value between 0 and 100"
-
 }
 ```
 
@@ -583,11 +511,9 @@ Example:
 const rules = {
   marks: {
     type: "array",
-
     elementConstraints: {
       type: "number",
     },
-
     elementConstraintsError: "Every marks element must be a number",
   },
 };
@@ -605,22 +531,17 @@ Example:
 const rules = {
   address: {
     type: "object",
-
     objectAttr: {
       city: {
         mandatory: true,
-
         type: "string",
       },
-
       location: {
         type: "object",
-
         objectAttr: {
           latitude: {
             type: "number",
           },
-
           longitude: {
             type: "number",
           },
@@ -636,15 +557,10 @@ Nested errors include the complete field path:
 ```js
 
 {
-
   path: "address.location.latitude",
-
   code: "INVALID_TYPE",
-
   message:
-
     "Invalid type for attribute address.location.latitude, required number value"
-
 }
 ```
 
@@ -660,14 +576,11 @@ Example:
 const rules = {
   minSalary: {
     type: "number",
-
     dependency: {
       maxSalary: {
         setDependencyRule: (minSalary, maxSalary) => ({
           type: "number",
-
           min: minSalary + 1,
-
           minError: "maxSalary must be more than minSalary",
         }),
       },
@@ -683,13 +596,9 @@ Example error:
 {
 
   path: "maxSalary",
-
   code: "MIN_VALUE",
-
   message:
-
     "maxSalary must be more than minSalary"
-
 }
 ```
 
@@ -701,47 +610,26 @@ validation error codes:
 ```text
 
 REQUIRED
-
 NULL_NOT_ALLOWED
-
 EMPTY_OBJECT_NOT_ALLOWED
-
 EMPTY_ARRAY_NOT_ALLOWED
-
 INVALID_ARRAY_ELEMENT
-
 REGEX_MISMATCH
-
 INVALID_TYPE
-
 INVALID_EMAIL
-
 INVALID_URL
-
 INVALID_ENUM
-
 INVALID_UUID
-
 INVALID_UUID_V1
-
 INVALID_UUID_V3
-
 INVALID_UUID_V4
-
 INVALID_UUID_V5
-
 INVALID_OBJECT_ID
-
 MIN_LENGTH
-
 MAX_LENGTH
-
 DECIMAL_NOT_ALLOWED
-
 MIN_VALUE
-
 MAX_VALUE
-
 OUT_OF_RANGE
 ```
 
@@ -774,13 +662,9 @@ keeping the same structured error format:
 ```js
 
 {
-
   path: "email",
-
   code: "INVALID_EMAIL",
-
   message: "Email address is invalid"
-
 }
 ```
 
@@ -790,11 +674,8 @@ Example:
 const rules = {
   email: {
     mandatory: true,
-
     type: "email",
-
     mandatoryError: "Email is required",
-
     typeError: "Email address is invalid",
   },
 };
@@ -805,13 +686,9 @@ If `email` is missing:
 ```js
 
 {
-
   path: "email",
-
   code: "REQUIRED",
-
   message: "Email is required"
-
 }
 ```
 
@@ -820,13 +697,9 @@ If `email` is present but invalid:
 ```js
 
 {
-
   path: "email",
-
   code: "INVALID_EMAIL",
-
   message: "Email address is invalid"
-
 }
 ```
 
@@ -867,40 +740,27 @@ If `email` is present but invalid:
 ```js
 const payload = {
   username: "ab",
-
   age: 15,
-
   score: 120,
 };
 
 const rules = {
   username: {
     mandatory: true,
-
     type: "string",
-
     minLength: 3,
-
     mandatoryError: "Username is required",
-
     typeError: "Username must be a string",
-
     minLengthError: "Username must contain at least 3 characters",
   },
-
   age: {
     type: "number",
-
     min: 18,
-
     minError: "Age must be at least 18",
   },
-
   score: {
     type: "number",
-
     range: "0-100",
-
     rangeError: "Score must be between 0 and 100",
   },
 };
@@ -913,55 +773,30 @@ Example result:
 ```js
 
 {
-
   statusCode: 400,
-
   valid: false,
-
   message:
-
     "One or more attribute values are invalid",
-
   errors: [
-
     {
-
       path: "username",
-
       code: "MIN_LENGTH",
-
       message:
-
         "Username must contain at least 3 characters"
-
     },
-
     {
-
       path: "age",
-
       code: "MIN_VALUE",
-
       message:
-
         "Age must be at least 18"
-
     },
-
     {
-
       path: "score",
-
       code: "OUT_OF_RANGE",
-
       message:
-
         "Score must be between 0 and 100"
-
     }
-
   ]
-
 }
 ```
 
@@ -977,9 +812,7 @@ For example:
 const rules = {
   age: {
     type: "number",
-
     min: 18,
-
     minError: "You must be 18 or older",
   },
 };
@@ -990,13 +823,9 @@ Still returns:
 ```js
 
 {
-
   path: "age",
-
   code: "MIN_VALUE",
-
   message: "You must be 18 or older"
-
 }
 ```
 
@@ -1023,9 +852,7 @@ Example:
 ```js
 const customValidResponse = {
   statusCode: 201,
-
   valid: true,
-
   message: "Payload validated successfully",
 };
 
@@ -1037,23 +864,14 @@ When validation succeeds, `validatedPayload` is automatically added:
 ```js
 
 {
-
   statusCode: 201,
-
   valid: true,
-
   message: "Payload validated successfully",
-
   validatedPayload: {
-
     name: "Kiran",
-
     email: "kiran@example.com",
-
     age: 29
-
   }
-
 }
 ```
 
@@ -1064,19 +882,14 @@ Example:
 ```js
 const customInvalidResponse = {
   statusCode: 422,
-
   valid: false,
-
   message: "Payload validation failed",
 };
 
 const result = perfectPayload(
   payload,
-
   validationRules,
-
   undefined,
-
   customInvalidResponse,
 );
 ```
@@ -1088,27 +901,16 @@ When validation fails, `errors` is automatically added:
 {
 
   statusCode: 422,
-
   valid: false,
-
   message: "Payload validation failed",
-
   errors: [
-
     {
-
       path: "email",
-
       code: "INVALID_EMAIL",
-
       message:
-
         "Invalid email format for attribute email"
-
     }
-
   ]
-
 }
 ```
 
@@ -1117,27 +919,20 @@ When validation fails, `errors` is automatically added:
 ```js
 const customValidResponse = {
   statusCode: 201,
-
   valid: true,
-
   message: "CUSTOM_VALID_RESPONSE",
 };
 
 const customInvalidResponse = {
   statusCode: 422,
-
   valid: false,
-
   message: "CUSTOM_INVALID_RESPONSE",
 };
 
 const result = perfectPayload(
   payload,
-
   validationRules,
-
   customValidResponse,
-
   customInvalidResponse,
 );
 ```
@@ -1167,17 +962,11 @@ is:
 ```js
 
 {
-
   statusCode: 200,
-
   valid: true,
-
   validatedPayload: {
-
     // validated fields
-
   }
-
 }
 ```
 
@@ -1186,27 +975,16 @@ The default invalid response is:
 ```js
 
 {
-
   statusCode: 400,
-
   valid: false,
-
   message: "One or more attribute values are invalid",
-
   errors: [
-
     {
-
       path: "field",
-
       code: "ERROR_CODE",
-
       message: "Validation error message"
-
     }
-
   ]
-
 }
 ```
 
@@ -1233,13 +1011,9 @@ An error can be returned as:
 ```js
 
 {
-
   path: "email",
-
   code: "INVALID_EMAIL",
-
   message: "Invalid email format for attribute email"
-
 }
 ```
 
@@ -1251,10 +1025,8 @@ Use `objectAttr` to validate properties inside an object.
 const payload = {
   address: {
     city: "Bengaluru",
-
     location: {
       latitude: "12.9716",
-
       longitude: 77.5946,
     },
   },
@@ -1263,20 +1035,16 @@ const payload = {
 const rules = {
   address: {
     type: "object",
-
     objectAttr: {
       city: {
         type: "string",
       },
-
       location: {
         type: "object",
-
         objectAttr: {
           latitude: {
             type: "number",
           },
-
           longitude: {
             type: "number",
           },
@@ -1295,15 +1063,10 @@ its complete nested path:
 ```js
 
 {
-
   path: "address.location.latitude",
-
   code: "INVALID_TYPE",
-
   message:
-
     "Invalid type for attribute address.location.latitude, required number value"
-
 }
 ```
 
@@ -1312,9 +1075,7 @@ Nested paths use dot notation:
 ```text
 
 address.city
-
 address.location.latitude
-
 address.location.longitude
 ```
 
@@ -1331,10 +1092,8 @@ const payload = {
 const rules = {
   marks: {
     type: "array",
-
     elementConstraints: {
       type: "number",
-
       range: "0-100",
     },
   },
@@ -1348,15 +1107,10 @@ The invalid third element is reported as:
 ```js
 
 {
-
   path: "marks[2]",
-
   code: "OUT_OF_RANGE",
-
   message:
-
     "Attribute marks[2] should have a value between 0 and 100"
-
 }
 ```
 
@@ -1365,9 +1119,7 @@ Array paths use zero-based indexes:
 ```text
 
 marks[0]
-
 marks[1]
-
 marks[2]
 ```
 
@@ -1380,9 +1132,7 @@ For example:
 ```text
 
 products[0].quantity
-
 products[1].quantity
-
 products[2].price
 ```
 
@@ -1426,17 +1176,9 @@ Result:
 
 {
 
-  "email":
-
-    "Invalid email format for attribute email",
-
-  "address.location.latitude":
-
-    "Invalid type for attribute address.location.latitude, required number value",
-
-  "marks[2]":
-
-    "Attribute marks[2] should have a value between 0 and 100"
+  "email": "Invalid email format for attribute email",
+  "address.location.latitude": "Invalid type for attribute address.location.latitude, required number value",
+  "marks[2]": "Attribute marks[2] should have a value between 0 and 100"
 
 }
 ```
@@ -1452,61 +1194,33 @@ sample-1
 {
 
   firstName: {
-
     mandatory: true,
-
     allowNull: false,
-
     type: "string",
-
     minLength: 3,
-
     minLengthError:"First name must have minimum 3 characters."
-
   },
-
   lastName: {
-
     mandatory: false,
-
     allowNull: true,
-
     type: "string",
-
   },
-
   email: {
-
     mandatory: true,
-
     allowNull: false,
-
     type: "email",
-
   },
-
   phone: {
-
     mandatory: true,
-
     allowNull: false,
-
     type: "string",
-
   },
-
   age: {
-
     mandatory: false,
-
     type: "number",
-
     min: 1,
-
     max: 120,
-
   },
-
 };
 ```
 
@@ -1515,273 +1229,139 @@ sample-2
 ```javascript
 
 {
-
   id: {
-
     mandatory: true,
-
     allowNull: true,
-
     type: "uuidv4",
-
   },
-
   batchId: {
-
     mandatory: true,
-
     allowNull: true,
-
     type: "objectId",
-
   },
-
   firstName: {
-
     mandatory: true,
-
     type: "string",
-
     minLength: 3,
-
   },
-
   lastName: {
-
     mandatory: false,
-
     allowNull: true,
-
     type: "string",
-
   },
-
   age: {
-
     type: "number",
-
     min: 0.1,
-
     max: 120,
-
   },
-
   isAdult: {
-
     type: "boolean",
-
   },
-
   totalWins: {
-
     type: "number",
-
     min: 0,
-
     preventDecimal: true,
-
   },
-
   email: {
-
     regex: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/,
-
   },
-
   githubLink: {
-
     type: "url",
-
   },
-
   accountStatus: {
-
     type: "enum",
-
     enumValues: ["Active", "Inactive", 200],
-
   },
-
   marks: {
-
     range: "0-100",
-
   },
-
   allMarks: {
-
     type: "array",
-
     allowEmptyArray: false,
-
     elementConstraints: {
-
       type: "number",
-
       allowNull: false,
-
       range: "0-100",
-
     },
-
   },
-
   totalScore: {
-
     type: "number",
-
     dependency: {
-
       result: {
-
         setDependencyRule: (totalScore, result) => {
-
           return { mandatory: true, allowNull: false, type: "string" };
-
         },
-
       },
-
     },
-
   },
-
   result: {
-
     type: "string",
-
     dependency: {
-
       totalScore: {
-
         setDependencyRule: (result, totalScore) => {
-
           return { mandatory: true, allowNull: false, type: "number" };
-
         },
-
       },
-
     },
-
   },
-
   minSalary: {
-
     mandatory: true,
-
     min: 1,
-
     type: "number",
-
     dependency: {
-
       maxSalary: {
-
         setDependencyRule: (minSalary, maxSalary) => {
-
           return {
-
             mandatory: true,
-
             min: minSalary + 1,
-
             minError: "maxSalary must be more than minSalary",
-
           };
-
         },
-
       },
-
     },
-
   },
-
   maxSalary: {
-
     dependency: {
-
       minSalary: {
-
         setDependencyRule: (maxSalary, minSalary) => {
-
           return {
-
             mandatory: true,
-
             max: maxSalary - 1,
-
             maxError: "minSalary must be less than maxSalary",
-
           };
-
         },
-
       },
-
     },
-
   },
-
   address: {
-
     mandatory: true,
-
     type: "object",
-
     allowEmptyObject: false,
-
     objectAttr: {
-
       country: { mandatory: true, type: "string" },
-
       state: {
-
         mandatory: true,
-
         type: "string",
-
       },
-
       city: {},
-
       zip: {
-
         mandatory: true,
-
         type: "string",
-
       },
-
       position: {
-
         mandatory: true,
-
         type: "object",
-
         allowEmptyObject: false,
-
         objectAttr: {
-
           lattitude: { mandatory: true, type: "number" },
-
           longitude: {
-
             mandatory: true,
-
             type: "number",
-
           },
-
         },
-
       },
-
     },
-
   },
-
 }
 ```
 
@@ -1794,13 +1374,9 @@ sample-2
 //Here validatePayload is your middleware function, where you're invoking perfect payload
 
 router.post(
-
   "/payload-validation",
-
   validatePayload({ rule: <your validation rule json object> }),
-
   (req, res) => res.send("OK")
-
 );
 ```
 
@@ -1813,15 +1389,12 @@ export const validatePayload = ({ rule }) => {
   return (req, res, next) => {
     try {
       const { statusCode, ...response } = perfectPayloadV1(req?.body, rule);
-
       if (+statusCode >= 200 && +statusCode <= 299) {
         req.validatedBody = response?.validatedPayload;
-
         next();
       } else res.status(statusCode).json(response);
     } catch (error) {
       console.error("Error validating payload", error);
-
       res.status(500).json({ error: "Internal Server Error" });
     }
   };
@@ -1835,19 +1408,15 @@ function validatePayload({ rule }) {
   return async (req, res, next) => {
     try {
       const { perfectPayloadV1 } = await import("perfect-payload");
-
       const { statusCode, ...response } = perfectPayloadV1(req?.body, rule);
-
       if (+statusCode >= 200 && +statusCode <= 299) {
         req.validatedBody = response?.validatedPayload;
-
         next();
       } else {
         res.status(statusCode).json(response);
       }
     } catch (error) {
       console.error("Error validating payload", error);
-
       res.status(500).json({ error: "Internal Server Error" });
     }
   };
