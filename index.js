@@ -1285,7 +1285,7 @@ function perfectPayloadStructured(
         // ==================================================
 
         case "customValidator":
-          if (addNextError && attrExist) {
+          if (addNextError && attrExist && attributeValue !== null) {
             const validator = attributeRules?.[ruleName];
 
             if (typeof validator !== "function") {
