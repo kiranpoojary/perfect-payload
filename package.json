@@ -10,6 +10,13 @@
   "files": [
     "index.js"
   ],
+  "jest": {
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/test.js",
+      "/testingV1.js"
+    ]
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kiranpoojary/perfect-payload.git"
