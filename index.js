@@ -633,6 +633,12 @@ function perfectPayloadStructured(
         );
       }
 
+      if (transformedValue === undefined) {
+        throw new Error(
+          `perfect-payload:- transform must not return undefined for attribute ${attributePath}`,
+        );
+      }
+
       attributeValue = transformedValue;
     }
     // TRANSFORMATIONS END
@@ -803,6 +809,45 @@ function perfectPayloadStructured(
 
           break;
 
+        case "minItems":
+          if (
+            addNextError &&
+            attrExist &&
+            attributeValue !== null &&
+            isArray(attributeValue) &&
+            attributeValue.length < attributeRules[ruleName]
+          ) {
+            addStructuredError(
+              rowErrors,
+              attributePath,
+              "MIN_ITEMS",
+              `Attribute ${attributePath} must contain at least ${attributeRules[ruleName]} item(s)`,
+            );
+
+            addNextError = false;
+          }
+
+          break;
+
+        case "maxItems":
+          if (
+            addNextError &&
+            attrExist &&
+            attributeValue !== null &&
+            isArray(attributeValue) &&
+            attributeValue.length > attributeRules[ruleName]
+          ) {
+            addStructuredError(
+              rowErrors,
+              attributePath,
+              "MAX_ITEMS",
+              `Attribute ${attributePath} must contain at most ${attributeRules[ruleName]} item(s)`,
+            );
+
+            addNextError = false;
+          }
+
+          break;
         // ==================================================
         // REGEX
         // ==================================================
@@ -837,7 +882,10 @@ function perfectPayloadStructured(
 
               switch (expectedType) {
                 case "number":
-                  if (!isNumber(attributeValue)) {
+                  if (
+                    !isNumber(attributeValue) ||
+                    Number.isNaN(attributeValue)
+                  ) {
                     addStructuredError(
                       rowErrors,
                       attributePath,
@@ -854,7 +902,6 @@ function perfectPayloadStructured(
                   }
 
                   break;
-
                 case "string":
                   if (!isString(attributeValue)) {
                     addStructuredError(
