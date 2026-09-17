@@ -810,19 +810,15 @@ const customInvalidResponse = {
 const invalidResult = perfectPayload(invalidPayload, validationRule);
 
 const validResult = perfectPayload(validPayload, validationRule);
-const customInvalidResult = perfectPayload(
-  invalidPayload,
-  validationRule,
-  customValidResponse,
-  customInvalidResponse,
-);
+const customInvalidResult = perfectPayload(invalidPayload, validationRule, {
+  validPayloadResponse: customValidResponse,
+  inValidPayloadResponse: customInvalidResponse,
+});
 
-const customValidResult = perfectPayload(
-  validPayload,
-  validationRule,
-  customValidResponse,
-  customInvalidResponse,
-);
+const customValidResult = perfectPayload(validPayload, validationRule, {
+  validPayloadResponse: customValidResponse,
+  inValidPayloadResponse: customInvalidResponse,
+});
 
 // ========================================================
 // PRINT FULL RESULTS
@@ -4303,6 +4299,329 @@ check(
       code: "INVALID_EMAIL",
     }) &&
     asyncValidatorExecutedAfterSyncError === false,
+);
+
+// ==================================================
+// v1.7.0 - UNKNOWN FIELD HANDLING
+// ==================================================
+
+const unknownFieldPayload = {
+  name: "Kiran",
+  role: "developer",
+  active: true,
+};
+
+const unknownFieldRules = {
+  name: {
+    type: "string",
+  },
+};
+
+// DEFAULT / STRIP
+const unknownFieldStripResult = perfectPayload(
+  unknownFieldPayload,
+  unknownFieldRules,
+);
+
+check(
+  "v1.7 unknownFields defaults to strip",
+  unknownFieldStripResult.valid === true &&
+    unknownFieldStripResult.validatedPayload?.name === "Kiran" &&
+    !Object.prototype.hasOwnProperty.call(
+      unknownFieldStripResult.validatedPayload,
+      "role",
+    ) &&
+    !Object.prototype.hasOwnProperty.call(
+      unknownFieldStripResult.validatedPayload,
+      "active",
+    ),
+);
+
+// ALLOW
+const unknownFieldAllowResult = perfectPayload(
+  unknownFieldPayload,
+  unknownFieldRules,
+  {
+    unknownFields: "allow",
+  },
+);
+
+check(
+  "v1.7 unknownFields allow preserves unknown fields",
+  unknownFieldAllowResult.valid === true &&
+    unknownFieldAllowResult.validatedPayload?.name === "Kiran" &&
+    unknownFieldAllowResult.validatedPayload?.role === "developer" &&
+    unknownFieldAllowResult.validatedPayload?.active === true,
+);
+
+// REJECT
+const unknownFieldRejectResult = perfectPayload(
+  unknownFieldPayload,
+  unknownFieldRules,
+  {
+    unknownFields: "reject",
+  },
+);
+
+check(
+  "v1.7 unknownFields reject returns structured errors",
+  unknownFieldRejectResult.valid === false &&
+    unknownFieldRejectResult.errors?.length === 2 &&
+    unknownFieldRejectResult.errors?.[0]?.path === "role" &&
+    unknownFieldRejectResult.errors?.[0]?.code === "UNKNOWN_FIELD" &&
+    unknownFieldRejectResult.errors?.[1]?.path === "active" &&
+    unknownFieldRejectResult.errors?.[1]?.code === "UNKNOWN_FIELD",
+);
+
+// ORIGINAL PAYLOAD MUST NOT BE MUTATED
+check(
+  "v1.7 unknownFields does not mutate original payload",
+  unknownFieldPayload.name === "Kiran" &&
+    unknownFieldPayload.role === "developer" &&
+    unknownFieldPayload.active === true,
+);
+
+// ==================================================
+// v1.7.0 - UNKNOWN FIELD HANDLING - NESTED + ASYNC
+// ==================================================
+
+// NESTED OBJECT - STRIP
+const nestedUnknownStripResult = perfectPayload(
+  {
+    profile: {
+      city: "Bengaluru",
+      role: "developer",
+    },
+  },
+  {
+    profile: {
+      type: "object",
+      objectAttr: {
+        city: {
+          type: "string",
+        },
+      },
+    },
+  },
+);
+
+check(
+  "v1.7 unknownFields strip works with nested objectAttr",
+  nestedUnknownStripResult.valid === true &&
+    nestedUnknownStripResult.validatedPayload?.profile?.city === "Bengaluru" &&
+    !Object.prototype.hasOwnProperty.call(
+      nestedUnknownStripResult.validatedPayload?.profile,
+      "role",
+    ),
+);
+
+// NESTED OBJECT - ALLOW
+const nestedUnknownAllowResult = perfectPayload(
+  {
+    profile: {
+      city: "Bengaluru",
+      role: "developer",
+    },
+  },
+  {
+    profile: {
+      type: "object",
+      objectAttr: {
+        city: {
+          type: "string",
+        },
+      },
+    },
+  },
+  {
+    unknownFields: "allow",
+  },
+);
+
+check(
+  "v1.7 unknownFields allow works with nested objectAttr",
+  nestedUnknownAllowResult.valid === true &&
+    nestedUnknownAllowResult.validatedPayload?.profile?.city === "Bengaluru" &&
+    nestedUnknownAllowResult.validatedPayload?.profile?.role === "developer",
+);
+
+// NESTED OBJECT - REJECT
+const nestedUnknownRejectResult = perfectPayload(
+  {
+    profile: {
+      city: "Bengaluru",
+      role: "developer",
+    },
+  },
+  {
+    profile: {
+      type: "object",
+      objectAttr: {
+        city: {
+          type: "string",
+        },
+      },
+    },
+  },
+  {
+    unknownFields: "reject",
+  },
+);
+
+check(
+  "v1.7 unknownFields reject returns nested path",
+  nestedUnknownRejectResult.valid === false &&
+    nestedUnknownRejectResult.errors?.[0]?.path === "profile.role" &&
+    nestedUnknownRejectResult.errors?.[0]?.code === "UNKNOWN_FIELD",
+);
+
+// ARRAY ELEMENT CONSTRAINTS - REJECT
+const arrayUnknownRejectResult = perfectPayload(
+  {
+    products: [
+      {
+        name: "iPhone",
+        price: 80000,
+        internalId: "A001",
+      },
+    ],
+  },
+  {
+    products: {
+      type: "array",
+      elementConstraints: {
+        type: "object",
+        objectAttr: {
+          name: {
+            type: "string",
+          },
+          price: {
+            type: "number",
+          },
+        },
+      },
+    },
+  },
+  {
+    unknownFields: "reject",
+  },
+);
+
+check(
+  "v1.7 unknownFields reject returns indexed array path",
+  arrayUnknownRejectResult.valid === false &&
+    arrayUnknownRejectResult.errors?.[0]?.path === "products[0].internalId" &&
+    arrayUnknownRejectResult.errors?.[0]?.code === "UNKNOWN_FIELD",
+);
+
+// ASYNC - ALLOW
+const asyncUnknownAllowResult = await perfectPayloadAsync(
+  {
+    username: "kiran",
+    role: "developer",
+  },
+  {
+    username: {
+      type: "string",
+      customValidator: async () => true,
+    },
+  },
+  {
+    unknownFields: "allow",
+  },
+);
+
+check(
+  "v1.7 async unknownFields allow preserves unknown fields",
+  asyncUnknownAllowResult.valid === true &&
+    asyncUnknownAllowResult.validatedPayload?.username === "kiran" &&
+    asyncUnknownAllowResult.validatedPayload?.role === "developer",
+);
+
+// ASYNC - REJECT + VERIFY ASYNC VALIDATOR IS SKIPPED
+let unknownFieldAsyncValidatorCalled = false;
+
+const asyncUnknownRejectResult = await perfectPayloadAsync(
+  {
+    username: "kiran",
+    role: "developer",
+  },
+  {
+    username: {
+      type: "string",
+      customValidator: async () => {
+        unknownFieldAsyncValidatorCalled = true;
+        return true;
+      },
+    },
+  },
+  {
+    unknownFields: "reject",
+  },
+);
+
+check(
+  "v1.7 async unknownFields reject returns structured error",
+  asyncUnknownRejectResult.valid === false &&
+    asyncUnknownRejectResult.errors?.[0]?.path === "role" &&
+    asyncUnknownRejectResult.errors?.[0]?.code === "UNKNOWN_FIELD",
+);
+
+check(
+  "v1.7 async validator does not run when unknownFields reject fails sync phase",
+  unknownFieldAsyncValidatorCalled === false,
+);
+
+// ==================================================
+// v1.7.0 - UNKNOWN FIELD HANDLING - OWN PROPERTIES
+// ==================================================
+
+const inheritedUnknownPayload = Object.create({
+  inheritedField: "should-not-be-processed",
+});
+
+inheritedUnknownPayload.name = "Kiran";
+inheritedUnknownPayload.role = "developer";
+
+const inheritedUnknownRules = {
+  name: {
+    type: "string",
+  },
+};
+
+const inheritedUnknownAllowResult = perfectPayload(
+  inheritedUnknownPayload,
+  inheritedUnknownRules,
+  {
+    unknownFields: "allow",
+  },
+);
+
+check(
+  "v1.7 unknownFields allow ignores inherited properties",
+  inheritedUnknownAllowResult.valid === true &&
+    inheritedUnknownAllowResult.validatedPayload?.name === "Kiran" &&
+    inheritedUnknownAllowResult.validatedPayload?.role === "developer" &&
+    !Object.prototype.hasOwnProperty.call(
+      inheritedUnknownAllowResult.validatedPayload,
+      "inheritedField",
+    ),
+);
+
+const inheritedUnknownRejectResult = perfectPayload(
+  inheritedUnknownPayload,
+  inheritedUnknownRules,
+  {
+    unknownFields: "reject",
+  },
+);
+
+check(
+  "v1.7 unknownFields reject ignores inherited properties",
+  inheritedUnknownRejectResult.valid === false &&
+    inheritedUnknownRejectResult.errors?.length === 1 &&
+    inheritedUnknownRejectResult.errors?.[0]?.path === "role" &&
+    inheritedUnknownRejectResult.errors?.[0]?.code === "UNKNOWN_FIELD",
 );
 
 // ###########################
