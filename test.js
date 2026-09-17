@@ -1,5 +1,4 @@
-import { perfectPayload } from "./index.js";
-
+import { perfectPayload, perfectPayloadAsync } from "./index.js";
 /*
 |--------------------------------------------------------------------------
 | perfect-payload v1.2.0 regression test
@@ -3631,6 +3630,681 @@ check(
     transformUndefinedHardeningControl.validatedPayload?.username === "KIRAN",
 );
 
+// ========================================================
+// v1.6.0 - ASYNC CUSTOM VALIDATOR
+// ========================================================
+
+const asyncValidatorRule = {
+  username: {
+    mandatory: true,
+    type: "string",
+    trim: true,
+
+    customValidator: async (value) => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      return value !== "admin";
+    },
+
+    customValidatorCode: "USERNAME_TAKEN",
+    customValidatorError: "Username is already taken",
+  },
+};
+
+// ------------------------------------------------------
+// Async customValidator - PASS
+// ------------------------------------------------------
+
+const asyncValidatorPassResult = await perfectPayloadAsync(
+  {
+    username: "  kiran  ",
+  },
+  asyncValidatorRule,
+);
+
+check(
+  "perfectPayloadAsync supports async customValidator",
+  asyncValidatorPassResult.valid === true &&
+    asyncValidatorPassResult.validatedPayload?.username === "kiran",
+);
+
+// ------------------------------------------------------
+// Async customValidator - FAIL
+// ------------------------------------------------------
+
+const asyncValidatorFailResult = await perfectPayloadAsync(
+  {
+    username: "  admin  ",
+  },
+  asyncValidatorRule,
+);
+
+check(
+  "perfectPayloadAsync returns structured error for failed async customValidator",
+  asyncValidatorFailResult.valid === false &&
+    hasError(asyncValidatorFailResult, {
+      path: "username",
+      code: "USERNAME_TAKEN",
+      message: "Username is already taken",
+    }),
+);
+
+// ------------------------------------------------------
+// Existing synchronous customValidator works with async API
+// ------------------------------------------------------
+
+const syncValidatorThroughAsyncResult = await perfectPayloadAsync(
+  {
+    username: "kiran",
+  },
+  {
+    username: {
+      type: "string",
+      customValidator: (value) => value === "kiran",
+    },
+  },
+);
+
+check(
+  "perfectPayloadAsync supports synchronous customValidator",
+  syncValidatorThroughAsyncResult.valid === true &&
+    syncValidatorThroughAsyncResult.validatedPayload?.username === "kiran",
+);
+
+// ========================================================
+// v1.6.0 - ASYNC CUSTOM VALIDATOR - OBJECTATTR
+// ========================================================
+
+const asyncNestedRule = {
+  profile: {
+    type: "object",
+
+    objectAttr: {
+      username: {
+        type: "string",
+        trim: true,
+
+        customValidator: async (value, payload) => {
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          return value !== payload.reservedUsername;
+        },
+
+        customValidatorCode: "USERNAME_RESERVED",
+        customValidatorError: "Username is reserved",
+      },
+
+      reservedUsername: {
+        type: "string",
+      },
+    },
+  },
+};
+
+// ------------------------------------------------------
+// Nested async validator - PASS
+// ------------------------------------------------------
+
+const asyncNestedPassResult = await perfectPayloadAsync(
+  {
+    profile: {
+      username: "  kiran  ",
+      reservedUsername: "admin",
+    },
+  },
+  asyncNestedRule,
+);
+
+check(
+  "perfectPayloadAsync supports async customValidator inside objectAttr",
+  asyncNestedPassResult.valid === true &&
+    asyncNestedPassResult.validatedPayload?.profile?.username === "kiran",
+);
+
+// ------------------------------------------------------
+// Nested async validator - FAIL
+// ------------------------------------------------------
+
+const asyncNestedFailResult = await perfectPayloadAsync(
+  {
+    profile: {
+      username: "admin",
+      reservedUsername: "admin",
+    },
+  },
+  asyncNestedRule,
+);
+
+check(
+  "perfectPayloadAsync returns structured error for async customValidator inside objectAttr",
+  asyncNestedFailResult.valid === false &&
+    hasError(asyncNestedFailResult, {
+      path: "profile.username",
+      code: "USERNAME_RESERVED",
+      message: "Username is reserved",
+    }),
+);
+
+// ------------------------------------------------------
+// Nested validator receives current nested payload
+// ------------------------------------------------------
+
+check(
+  "nested async customValidator receives current nested payload",
+  asyncNestedFailResult.valid === false &&
+    hasError(asyncNestedFailResult, {
+      path: "profile.username",
+      code: "USERNAME_RESERVED",
+    }),
+);
+
+// ========================================================
+// v1.6.0 - ASYNC CUSTOM VALIDATOR - ELEMENTCONSTRAINTS
+// ========================================================
+
+const asyncArrayRule = {
+  usernames: {
+    type: "array",
+
+    elementConstraints: {
+      type: "string",
+      trim: true,
+
+      customValidator: async (value) => {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        return value !== "admin" && value !== "root";
+      },
+
+      customValidatorCode: "USERNAME_TAKEN",
+      customValidatorError: "Username is already taken",
+    },
+  },
+};
+
+// ------------------------------------------------------
+// Array async validator - PASS + transformation
+// ------------------------------------------------------
+
+const asyncArrayPassResult = await perfectPayloadAsync(
+  {
+    usernames: ["  kiran  ", "  john  "],
+  },
+  asyncArrayRule,
+);
+
+check(
+  "perfectPayloadAsync supports async customValidator inside elementConstraints",
+  asyncArrayPassResult.valid === true &&
+    asyncArrayPassResult.validatedPayload?.usernames?.[0] === "kiran" &&
+    asyncArrayPassResult.validatedPayload?.usernames?.[1] === "john",
+);
+
+// ------------------------------------------------------
+// Array async validator - indexed FAIL
+// ------------------------------------------------------
+
+const asyncArrayFailResult = await perfectPayloadAsync(
+  {
+    usernames: ["  kiran  ", "  admin  ", "  john  "],
+  },
+  asyncArrayRule,
+);
+
+check(
+  "perfectPayloadAsync returns indexed error for async customValidator inside elementConstraints",
+  asyncArrayFailResult.valid === false &&
+    hasError(asyncArrayFailResult, {
+      path: "usernames[1]",
+      code: "USERNAME_TAKEN",
+      message: "Username is already taken",
+    }),
+);
+
+// ------------------------------------------------------
+// Multiple array failures preserve indexes
+// ------------------------------------------------------
+
+const asyncArrayMultipleFailResult = await perfectPayloadAsync(
+  {
+    usernames: ["  admin  ", "  kiran  ", "  root  "],
+  },
+  asyncArrayRule,
+);
+
+check(
+  "perfectPayloadAsync preserves indexes for multiple async array validation failures",
+  asyncArrayMultipleFailResult.valid === false &&
+    hasError(asyncArrayMultipleFailResult, {
+      path: "usernames[0]",
+      code: "USERNAME_TAKEN",
+    }) &&
+    hasError(asyncArrayMultipleFailResult, {
+      path: "usernames[2]",
+      code: "USERNAME_TAKEN",
+    }),
+);
+
+// ========================================================
+// v1.6.0 - ASYNC CUSTOM VALIDATOR - DEEP NESTING
+// ========================================================
+
+// ------------------------------------------------------
+// Array → Object → Object → Async Validator
+// ------------------------------------------------------
+
+const asyncDeepArrayObjectRule = {
+  products: {
+    type: "array",
+
+    elementConstraints: {
+      type: "object",
+
+      objectAttr: {
+        seller: {
+          type: "object",
+
+          objectAttr: {
+            username: {
+              type: "string",
+              trim: true,
+
+              customValidator: async (value) => {
+                await new Promise((resolve) => setTimeout(resolve, 10));
+
+                return value !== "admin";
+              },
+
+              customValidatorCode: "USERNAME_TAKEN",
+              customValidatorError: "Username is already taken",
+            },
+          },
+        },
+      },
+    },
+  },
+};
+
+const asyncDeepArrayObjectResult = await perfectPayloadAsync(
+  {
+    products: [
+      {
+        seller: {
+          username: "  kiran  ",
+        },
+      },
+      {
+        seller: {
+          username: "  admin  ",
+        },
+      },
+    ],
+  },
+  asyncDeepArrayObjectRule,
+);
+
+check(
+  "perfectPayloadAsync supports deep array-object-object async validation",
+  asyncDeepArrayObjectResult.valid === false &&
+    hasError(asyncDeepArrayObjectResult, {
+      path: "products[1].seller.username",
+      code: "USERNAME_TAKEN",
+      message: "Username is already taken",
+    }),
+);
+
+// ------------------------------------------------------
+// Object → Array → Array → Object → Async Validator
+// ------------------------------------------------------
+
+const asyncDeepMixedRule = {
+  profile: {
+    type: "object",
+
+    objectAttr: {
+      teams: {
+        type: "array",
+
+        elementConstraints: {
+          type: "object",
+
+          objectAttr: {
+            members: {
+              type: "array",
+
+              elementConstraints: {
+                type: "object",
+
+                objectAttr: {
+                  username: {
+                    type: "string",
+                    trim: true,
+
+                    customValidator: async (value) => {
+                      await new Promise((resolve) => setTimeout(resolve, 10));
+
+                      return value !== "admin";
+                    },
+
+                    customValidatorCode: "USERNAME_TAKEN",
+                    customValidatorError: "Username is already taken",
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+};
+
+const asyncDeepMixedResult = await perfectPayloadAsync(
+  {
+    profile: {
+      teams: [
+        {
+          members: [
+            {
+              username: "  kiran  ",
+            },
+          ],
+        },
+        {
+          members: [
+            {
+              username: "  sam  ",
+            },
+            {
+              username: "  admin  ",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  asyncDeepMixedRule,
+);
+
+check(
+  "perfectPayloadAsync preserves paths through deep mixed object-array nesting",
+  asyncDeepMixedResult.valid === false &&
+    hasError(asyncDeepMixedResult, {
+      path: "profile.teams[1].members[1].username",
+      code: "USERNAME_TAKEN",
+      message: "Username is already taken",
+    }),
+);
+
+// ========================================================
+// v1.6.0 - ASYNC CUSTOM VALIDATOR - ERROR DETAILS
+// ========================================================
+
+// ------------------------------------------------------
+// Default error uses final indexed path
+// ------------------------------------------------------
+
+const asyncDefaultErrorRule = {
+  users: {
+    type: "array",
+
+    elementConstraints: {
+      type: "object",
+
+      objectAttr: {
+        username: {
+          type: "string",
+          trim: true,
+
+          customValidator: async (value) => {
+            await new Promise((resolve) => setTimeout(resolve, 10));
+
+            return value !== "admin";
+          },
+        },
+      },
+    },
+  },
+};
+
+const asyncDefaultErrorResult = await perfectPayloadAsync(
+  {
+    users: [{ username: "kiran" }, { username: "  admin  " }],
+  },
+  asyncDefaultErrorRule,
+);
+
+check(
+  "perfectPayloadAsync default customValidator error uses final indexed path",
+  asyncDefaultErrorResult.valid === false &&
+    hasError(asyncDefaultErrorResult, {
+      path: "users[1].username",
+      code: "CUSTOM_VALIDATION_FAILED",
+      message: "Custom validation failed for attribute users[1].username",
+    }),
+);
+
+// ------------------------------------------------------
+// Custom code/message remain unchanged
+// ------------------------------------------------------
+
+const asyncCustomErrorRule = {
+  users: {
+    type: "array",
+
+    elementConstraints: {
+      type: "object",
+
+      objectAttr: {
+        username: {
+          type: "string",
+
+          customValidator: async (value) => {
+            await new Promise((resolve) => setTimeout(resolve, 10));
+
+            return value !== "admin";
+          },
+
+          customValidatorCode: "USERNAME_TAKEN",
+          customValidatorError: "This username is already reserved",
+        },
+      },
+    },
+  },
+};
+
+const asyncCustomErrorResult = await perfectPayloadAsync(
+  {
+    users: [{ username: "kiran" }, { username: "admin" }],
+  },
+  asyncCustomErrorRule,
+);
+
+check(
+  "perfectPayloadAsync preserves custom validator code and message with indexed path",
+  asyncCustomErrorResult.valid === false &&
+    hasError(asyncCustomErrorResult, {
+      path: "users[1].username",
+      code: "USERNAME_TAKEN",
+      message: "This username is already reserved",
+    }),
+);
+
+// ========================================================
+// v1.6.0 - ASYNC VALIDATION - COMPATIBILITY
+// ========================================================
+
+// ------------------------------------------------------
+// Async API supports synchronous customValidator
+// ------------------------------------------------------
+
+const asyncApiSyncValidatorRule = {
+  username: {
+    type: "string",
+    trim: true,
+
+    customValidator: (value) => {
+      return value !== "admin";
+    },
+
+    customValidatorCode: "USERNAME_TAKEN",
+    customValidatorError: "Username is already taken",
+  },
+};
+
+const asyncApiSyncValidatorPass = await perfectPayloadAsync(
+  {
+    username: "  kiran  ",
+  },
+  asyncApiSyncValidatorRule,
+);
+
+const asyncApiSyncValidatorFail = await perfectPayloadAsync(
+  {
+    username: "  admin  ",
+  },
+  asyncApiSyncValidatorRule,
+);
+
+check(
+  "perfectPayloadAsync supports synchronous customValidator",
+  asyncApiSyncValidatorPass.valid === true &&
+    asyncApiSyncValidatorPass.validatedPayload?.username === "kiran" &&
+    asyncApiSyncValidatorFail.valid === false &&
+    hasError(asyncApiSyncValidatorFail, {
+      path: "username",
+      code: "USERNAME_TAKEN",
+      message: "Username is already taken",
+    }),
+);
+
+// ------------------------------------------------------
+// Async validator exceptions propagate
+// ------------------------------------------------------
+
+let asyncValidatorExceptionPropagated = false;
+
+try {
+  await perfectPayloadAsync(
+    {
+      username: "kiran",
+    },
+    {
+      username: {
+        type: "string",
+
+        customValidator: async () => {
+          throw new Error("Database unavailable");
+        },
+      },
+    },
+  );
+} catch (error) {
+  asyncValidatorExceptionPropagated = error.message === "Database unavailable";
+}
+
+check(
+  "perfectPayloadAsync propagates customValidator exceptions",
+  asyncValidatorExceptionPropagated,
+);
+
+// ------------------------------------------------------
+// Sync API continues rejecting async customValidator
+// ------------------------------------------------------
+
+let syncApiRejectedAsyncValidator = false;
+
+try {
+  perfectPayload(
+    {
+      username: "kiran",
+    },
+    {
+      username: {
+        type: "string",
+
+        customValidator: async () => {
+          return true;
+        },
+      },
+    },
+  );
+} catch (error) {
+  syncApiRejectedAsyncValidator =
+    error.message ===
+    "perfect-payload:- customValidator must be synchronous for attribute username";
+}
+
+check(
+  "perfectPayload continues rejecting async customValidator",
+  syncApiRejectedAsyncValidator,
+);
+
+// ------------------------------------------------------
+// Async API rejects non-function customValidator
+// ------------------------------------------------------
+
+let asyncApiRejectedInvalidValidator = false;
+
+try {
+  await perfectPayloadAsync(
+    {
+      username: "kiran",
+    },
+    {
+      username: {
+        type: "string",
+        customValidator: true,
+      },
+    },
+  );
+} catch (error) {
+  asyncApiRejectedInvalidValidator =
+    error.message ===
+    "perfect-payload:- customValidator must be a function for attribute username";
+}
+
+check(
+  "perfectPayloadAsync rejects non-function customValidator",
+  asyncApiRejectedInvalidValidator,
+);
+
+// ------------------------------------------------------
+// Sync errors stop async validation phase
+// ------------------------------------------------------
+
+let asyncValidatorExecutedAfterSyncError = false;
+
+const asyncSkippedOnSyncErrorResult = await perfectPayloadAsync(
+  {
+    email: "invalid-email",
+    username: "admin",
+  },
+  {
+    email: {
+      type: "email",
+    },
+
+    username: {
+      type: "string",
+
+      customValidator: async () => {
+        asyncValidatorExecutedAfterSyncError = true;
+        return false;
+      },
+    },
+  },
+);
+
+check(
+  "perfectPayloadAsync skips async validation when synchronous validation fails",
+  asyncSkippedOnSyncErrorResult.valid === false &&
+    hasError(asyncSkippedOnSyncErrorResult, {
+      path: "email",
+      code: "INVALID_EMAIL",
+    }) &&
+    asyncValidatorExecutedAfterSyncError === false,
+);
+
 // ###########################
 
 // ========================================================
@@ -3639,14 +4313,20 @@ check(
 
 console.log("========================================================");
 
-const regressionChecks = [];
-
 console.log("\nRegression execution completed.");
 
 console.log("Inspect any ❌ FAIL entries above before proceeding with release");
-
+//
+//
+//
 // ========================================================
+//
+//
+//
 // PRIVACY / SENSITIVE VALUE LEAK TEST
+//
+//
+//
 // ========================================================
 
 const sensitivePayload = {

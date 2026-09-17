@@ -1,22 +1,45 @@
 # perfect-payload
 
-A lightweight JavaScript payload validation utility for validating API
-and JSON payloads with simple rule-based configuration.
+A lightweight JavaScript payload validation and transformation utility
+for API and JSON payloads.
 
-`perfect-payload` supports structured validation errors, nested field
-paths, synchronous custom validators, synchronous payload
-transformation/sanitization, array size constraints, and deeply nested
-array/object validation while keeping the validation schema simple.
+`perfect-payload` provides structured validation errors, exact nested
+field paths, synchronous and asynchronous custom validation, synchronous
+transformation/sanitization, array constraints, and deeply nested
+object/array validation while keeping schemas simple and the package
+lightweight.
+
+## Highlights
+
+- Lightweight, rule-based payload validation
+- Structured errors with stable machine-readable codes
+- Exact nested paths such as `profile.email` and
+  `products[1].quantity`
+- Recursive `objectAttr` and `elementConstraints` validation
+- `minItems` and `maxItems` array constraints
+- Built-in `trim`, `lowercase`, and `uppercase` sanitization
+- Custom synchronous `transform(value, payload)`
+- Custom synchronous validators with `perfectPayload()`
+- Custom synchronous or asynchronous validators with
+  `perfectPayloadAsync()`
+- Transformed values returned through `validatedPayload`
+- Original input payload is not mutated
+- Extra payload fields are filtered from `validatedPayload`
+- Legacy `perfectPayloadV1()` retained during the migration period
 
 ## Quick Links
 
 - [Installation](#installation)
 - [Basic Usage](#basic-usage)
+- [Synchronous vs Asynchronous
+  Validation](#synchronous-vs-asynchronous-validation)
 - [Validation Rules](#validation-rules)
-- [Array Size and Nested Validation](#array-size-and-nested-validation)
+- [Array Size and Nested
+  Validation](#array-size-and-nested-validation)
 - [Transformations and
   Sanitization](#transformations-and-sanitization)
 - [Custom Validators](#customvalidator)
+- [Asynchronous Validation](#asynchronous-validation)
 - [Error Codes](#error-codes)
 - [Custom Error Messages](#custom-error-messages)
 - [Nested Objects and Array Field
@@ -79,24 +102,25 @@ console.log(result);
 
 {
 
-  statusCode: 200,
+  statusCode: 200,
 
-  valid: true,
+  valid: true,
 
-  validatedPayload: {
+  validatedPayload: {
 
-    name: "Kiran",
+    name: "Kiran",
 
-    email: "kiran@example.com",
+    email: "kiran@example.com",
 
-    age: 29
+    age: 29
 
-  }
+  }
 
 }
 ```
 
 Note: The validatedPayload contains only the fields
+
 defined in the
 
 schema, automatically filtering out any extra attributes. You can use it
@@ -111,25 +135,25 @@ to safely overwrite request.body or assign it to a new request property
 
 {
 
-  statusCode: 400,
+  statusCode: 400,
 
-  valid: false,
+  valid: false,
 
-  message: "One or more attribute values are invalid",
+  message: "One or more attribute values are invalid",
 
-  errors: [
+  errors: [
 
-    {
+    {
 
-      path: "email",
+      path: "email",
 
-      code: "INVALID_EMAIL",
+      code: "INVALID_EMAIL",
 
-      message: "Invalid email format for attribute email"
+      message: "Invalid email format for attribute email"
 
-    }
+    }
 
-  ]
+  ]
 
 }
 ```
@@ -140,11 +164,11 @@ Each error returned by `perfectPayload()` contains:
 
 {
 
-  path: "field.path",
+  path: "field.path",
 
-  code: "ERROR_CODE",
+  code: "ERROR_CODE",
 
-  message: "Human readable validation message"
+  message: "Human readable validation message"
 
 }
 ```
@@ -158,6 +182,55 @@ Each error returned by `perfectPayload()` contains:
 failure.
 
 \- Submitted payload values are not included in default error messages.
+
+## Synchronous vs Asynchronous Validation
+
+For normal synchronous validation, use `perfectPayload()`:
+
+```js
+import { perfectPayload } from "perfect-payload";
+
+const result = perfectPayload(payload, validationRules);
+```
+
+When any `customValidator` needs to perform asynchronous work, use
+`perfectPayloadAsync()` and `await` the result:
+
+```js
+import { perfectPayloadAsync } from "perfect-payload";
+
+const result = await perfectPayloadAsync(payload, validationRules);
+```
+
+The public APIs are:
+
+```text
+perfectPayloadV1()       legacy API; deprecated
+perfectPayload()         synchronous validation
+perfectPayloadAsync()    synchronous + asynchronous customValidator
+```
+
+`perfectPayload()` remains synchronous and intentionally rejects a
+`customValidator` that returns a Promise. This preserves the existing
+synchronous API contract.
+
+`perfectPayloadAsync()` first performs transformations and normal
+synchronous validation. If synchronous validation fails, the result is
+returned immediately and asynchronous validators are not executed. This
+avoids unnecessary asynchronous work for payloads that are already
+invalid.
+
+```text
+transformations
+      ↓
+synchronous validation
+      ↓
+sync errors? ── yes ──→ return validation errors
+      ↓ no
+async customValidator
+      ↓
+return result
+```
 
 ## Legacy API
 
@@ -200,6 +273,7 @@ errors: [
 ```
 
 Note: If an inValidPayloadResponse is provided, the
+
 system returns
 
 it alongside an automatically generated errors property. Do not include
@@ -211,6 +285,7 @@ object.
 ## Validation Rules
 
 `perfectPayload()` supports validation, nested-schema,
+
 custom-validation, and transformation rules.
 
 ### `mandatory`
@@ -305,6 +380,7 @@ Default: Not applied when omitted.
 const rules = {
   tags: {
     type: "array",
+
     minItems: 2,
   },
 };
@@ -313,14 +389,20 @@ const rules = {
 An array with fewer than 2 items returns `MIN_ITEMS`.
 
 ```js
+
 {
+
   path: "tags",
+
   code: "MIN_ITEMS",
+
   message: "Attribute tags must contain at least 2 item(s)"
+
 }
 ```
 
-`minItems` is enforced even when `allowEmptyArray: true` is set. For example, `minItems: 2` still rejects `[]`.
+`minItems` is enforced even when `allowEmptyArray: true` is set. For
+example, `minItems: 2` still rejects `[]`.
 
 Error code: `MIN_ITEMS`
 
@@ -336,6 +418,7 @@ Default: Not applied when omitted.
 const rules = {
   tags: {
     type: "array",
+
     maxItems: 5,
   },
 };
@@ -344,10 +427,15 @@ const rules = {
 An array with more than 5 items returns `MAX_ITEMS`.
 
 ```js
+
 {
+
   path: "tags",
+
   code: "MAX_ITEMS",
+
   message: "Attribute tags must contain at most 5 item(s)"
+
 }
 ```
 
@@ -554,6 +642,7 @@ Error code: `MAX_LENGTH`
 Prevents decimal numbers.
 
 Default: `false`; both integer and decimal numbers are
+
 allowed.
 
 Example:
@@ -664,13 +753,13 @@ Example error:
 
 {
 
-  path: "marks[2]",
+  path: "marks[2]",
 
-  code: "OUT_OF_RANGE",
+  code: "OUT_OF_RANGE",
 
-  message:
+  message:
 
-    "Attribute marks[2] should have a value between 0 and 100"
+    "Attribute marks[2] should have a value between 0 and 100"
 
 }
 ```
@@ -739,13 +828,13 @@ Nested errors include the complete field path:
 
 {
 
-  path: "address.location.latitude",
+  path: "address.location.latitude",
 
-  code: "INVALID_TYPE",
+  code: "INVALID_TYPE",
 
-  message:
+  message:
 
-    "Invalid type for attribute address.location.latitude, required number value"
+    "Invalid type for attribute address.location.latitude, required number value"
 
 }
 ```
@@ -784,13 +873,13 @@ Example error:
 
 {
 
-  path: "maxSalary",
+  path: "maxSalary",
 
-  code: "MIN_VALUE",
+  code: "MIN_VALUE",
 
-  message:
+  message:
 
-    "maxSalary must be more than minSalary"
+    "maxSalary must be more than minSalary"
 
 }
 ```
@@ -799,7 +888,9 @@ Example error:
 
 ## Array Size and Nested Validation
 
-`perfectPayload()` supports array size constraints and recursive validation of arrays and objects at multiple depths. Array indexes and nested object keys are preserved in structured error paths.
+`perfectPayload()` supports array size constraints and recursive
+validation of arrays and objects at multiple depths. Array indexes and
+nested object keys are preserved in structured error paths.
 
 ### Array size constraints
 
@@ -809,12 +900,17 @@ Use `minItems` and `maxItems` with `type: "array"`:
 const rules = {
   products: {
     type: "array",
+
     minItems: 1,
+
     maxItems: 3,
+
     elementConstraints: {
       type: "object",
+
       objectAttr: {
         productId: { mandatory: true, type: "string" },
+
         quantity: { mandatory: true, type: "number", min: 1 },
       },
     },
@@ -825,18 +921,26 @@ const rules = {
 If the array is empty, `minItems` reports the array path itself:
 
 ```js
+
 {
+
   path: "products",
+
   code: "MIN_ITEMS",
+
   message: "Attribute products must contain at least 1 item(s)"
+
 }
 ```
 
 ### Arrays of objects
 
-`elementConstraints` can contain `objectAttr`, allowing every object in an array to use a nested schema. An invalid quantity in the second product is reported as:
+`elementConstraints` can contain `objectAttr`, allowing every object in
+an array to use a nested schema. An invalid quantity in the second
+product is reported as:
 
 ```text
+
 products[1].quantity
 ```
 
@@ -848,21 +952,32 @@ products[1].quantity
 const rules = {
   orders: {
     type: "array",
+
     minItems: 1,
+
     maxItems: 2,
+
     elementConstraints: {
       type: "object",
+
       objectAttr: {
         orderId: { mandatory: true, type: "string" },
+
         items: {
           mandatory: true,
+
           type: "array",
+
           minItems: 1,
+
           maxItems: 2,
+
           elementConstraints: {
             type: "object",
+
             objectAttr: {
               productId: { mandatory: true, type: "string" },
+
               quantity: { mandatory: true, type: "number", min: 1 },
             },
           },
@@ -873,31 +988,41 @@ const rules = {
 };
 ```
 
-A deep validation failure preserves the complete indexed path, for example:
+A deep validation failure preserves the complete indexed path, for
+example:
 
 ```text
+
 orders[1].items[2].quantity
 ```
 
-Array constraints work at nested levels too. A nested array can report paths such as:
+Array constraints work at nested levels too. A nested array can report
+paths such as:
 
 ```text
+
 orders[1].items
 ```
 
 Nested arrays are supported and every array index is preserved:
 
 ```text
+
 matrix[1][1]
+
 matrix[1][1][1]
 ```
 
-Transformations applied inside nested objects or array elements are preserved in `validatedPayload`, while the original input remains unchanged.
+Transformations applied inside nested objects or array elements are
+preserved in `validatedPayload`, while the original input remains
+unchanged.
 
 ### Transformations and Sanitization
 
 `perfectPayload()` can transform a field before its validation rules
+
 run. The transformed value is returned in `validatedPayload`, while the
+
 original input object is not mutated.
 
 Supported transformation rules:
@@ -907,53 +1032,81 @@ Rule Purpose
 ---
 
 `trim` Removes leading and trailing whitespace from strings
+
 `lowercase` Converts strings to lowercase
+
 `uppercase` Converts strings to uppercase
+
 `transform` Runs a custom synchronous transformation function
 
 Transformations always run in this fixed order, regardless of the order
+
 in which the rule properties are written:
 
 ```text
+
 trim
+
 ↓
+
 lowercase
+
 ↓
+
 uppercase
+
 ↓
+
 transform(value, payload)
+
 ↓
+
 validation rules
+
 ↓
+
 customValidator
+
 ↓
+
 validatedPayload
 ```
 
 #### `trim`
 
 ```js
+
 const payload = {
+
   name: "   Kiran Poojary   ",
+
 };
 
 const rules = {
+
   name: {
+
     type: "string",
+
     trim: true,
+
   },
+
 };
 
 const result = perfectPayload(payload, rules);
 
 console.log(result.validatedPayload.name);
-// "Kiran Poojary"
+
+*// "Kiran Poojary"*
 
 console.log(payload.name);
-// "   Kiran Poojary   "
+
+*// "   Kiran Poojary   "*
 ```
 
 `trim` applies only to string values. Non-string values are left
+
 unchanged.
 
 #### `lowercase`
@@ -962,13 +1115,16 @@ unchanged.
 const rules = {
   email: {
     trim: true,
+
     lowercase: true,
+
     type: "email",
   },
 };
 ```
 
 For `"  KIRAN@EXAMPLE.COM  "`, the validated value becomes
+
 `"kiran@example.com"`.
 
 #### `uppercase`
@@ -977,6 +1133,7 @@ For `"  KIRAN@EXAMPLE.COM  "`, the validated value becomes
 const rules = {
   countryCode: {
     type: "string",
+
     uppercase: true,
   },
 };
@@ -985,6 +1142,7 @@ const rules = {
 For `"in"`, the validated value becomes `"IN"`.
 
 `lowercase: true` and `uppercase: true` cannot be enabled together for
+
 the same field. Doing so throws a schema configuration error.
 
 #### `transform`
@@ -995,6 +1153,7 @@ Use `transform` when the built-in string transformations are not enough.
 const rules = {
   phone: {
     type: "string",
+
     transform: (value) => value.replace(/\s+/g, ""),
   },
 };
@@ -1011,31 +1170,46 @@ transform: (value, payload) => {
 ```
 
 - `value` is the field value after the built-in transformations have
+
   run.
+
 - `payload` is the current payload/object being validated.
 
 This makes cross-field transformations possible:
 
 ```js
+
 const payload = {
+
   amount: 100,
+
   multiplier: 2,
+
 };
 
 const rules = {
+
   amount: {
+
     transform: (value, payload) => value * payload.multiplier,
+
     type: "number",
+
   },
+
   multiplier: {
+
     type: "number",
+
   },
+
 };
 
 const result = perfectPayload(payload, rules);
 
 console.log(result.validatedPayload.amount);
-// 200
+
+*// 200*
 ```
 
 A custom transformer may also change the data type before validation:
@@ -1044,36 +1218,48 @@ A custom transformer may also change the data type before validation:
 const rules = {
   quantity: {
     transform: (value) => Number(value),
+
     type: "number",
+
     min: 1,
+
     max: 100,
   },
 };
 ```
 
 The transformed value is validated by the normal validation rules and is
+
 also the value received by `customValidator`.
 
 Transformations work inside `objectAttr` and `elementConstraints`, and
+
 transformed nested/array values are preserved in `validatedPayload`.
 
 ```js
 const rules = {
   profile: {
     type: "object",
+
     objectAttr: {
       name: {
         trim: true,
+
         uppercase: true,
+
         type: "string",
       },
     },
   },
+
   tags: {
     type: "array",
+
     elementConstraints: {
       trim: true,
+
       lowercase: true,
+
       type: "string",
     },
   },
@@ -1081,29 +1267,39 @@ const rules = {
 ```
 
 Missing optional fields are not transformed. An input value of `null` is
+
 not passed to transformation functions; null handling remains controlled
+
 by `allowNull`.
 
-**Important:** `transform` is synchronous. A non-function transformer,
+\*\*\*\*Important:\*\*\*\* `transform` is synchronous. A non-function
+transformer,
+
 an `async` transformer, a transformer that returns a Promise, or a
-transformer that returns `undefined` is not supported and throws an error.
-Returning `null`, `""`, `0`, or `false` is allowed; the transformed value is
-then processed by the normal validation rules. Exceptions thrown inside the
+
+transformer that returns `undefined` is not supported and throws an
+error.
+
+Returning `null`, `""`, `0`, or `false` is allowed; the transformed
+value is
+
+then processed by the normal validation rules. Exceptions thrown inside
+the
+
 transformer propagate to the caller.
 
 For example, returning `undefined` throws:
 
 ```text
+
 perfect-payload:- transform must not return undefined for attribute username
 ```
 
 ### `customValidator`
 
-Allows you to define custom synchronous validation logic for a field
-when the built-in validation rules are not enough.
+Defines custom validation logic when the built-in rules are not enough.
 
-The validator receives the field value and the current payload/object
-being validated:
+The validator receives:
 
 ```js
 customValidator: (value, payload) => {
@@ -1111,70 +1307,56 @@ customValidator: (value, payload) => {
 };
 ```
 
-The validator must return `true` to pass validation. Any other return
-value causes validation to fail.
+- `value` is the field value after transformations have been applied.
+- `payload` is the current payload/object being validated.
+- Return `true` to pass.
+- Any value other than `true` fails validation.
+- Exceptions thrown by the validator propagate to the caller.
 
-Example:
+For nested validation, `payload` means the current nested object rather
+than the root request body.
+
+#### Synchronous custom validator
+
+Use a synchronous validator with `perfectPayload()`:
 
 ```js
 const rules = {
   username: {
     mandatory: true,
-
     type: "string",
+    trim: true,
 
     customValidator: (value) => {
       return !value.toLowerCase().includes("admin");
     },
 
     customValidatorCode: "RESERVED_USERNAME",
-
     customValidatorError: "Username cannot contain admin",
   },
 };
+
+const result = perfectPayload({ username: "  admin_kiran  " }, rules);
 ```
 
-For this payload:
+A failure returns:
 
 ```js
-const payload = {
-  username: "admin_kiran",
-};
-```
-
-The validation error is:
-
-```js
-
 {
-
-  path: "username",
-
-  code: "RESERVED_USERNAME",
-
-  message: "Username cannot contain admin"
-
+  statusCode: 400,
+  valid: false,
+  message: "One or more attribute values are invalid",
+  errors: [
+    {
+      path: "username",
+      code: "RESERVED_USERNAME",
+      message: "Username cannot contain admin"
+    }
+  ]
 }
 ```
 
-If `customValidatorCode` and `customValidatorError` are not provided,
-the default error is:
-
-```js
-
-{
-
-  path: "username",
-
-  code: "CUSTOM_VALIDATION_FAILED",
-
-  message: "Custom validation failed for attribute username"
-
-}
-```
-
-The current payload/object being validated can be used as the second
-argument when required:
+The current payload/object can be used for cross-field validation:
 
 ```js
 const rules = {
@@ -1190,21 +1372,237 @@ const rules = {
     },
 
     customValidatorCode: "LIMIT_EXCEEDED",
-
     customValidatorError: "Amount cannot exceed limit",
   },
 };
 ```
 
-`customValidator` also works with nested objects and array
-`elementConstraints`. The generated structured error automatically
-contains the corresponding nested or array path.
+If `customValidatorCode` and `customValidatorError` are omitted, the
+default error is:
 
-Important: `customValidator` is synchronous. An `async`
-validator or a validator that returns a Promise is not supported and
-throws an error. Asynchronous validation is not part of this feature.
+```js
+{
+  path: "username",
+  code: "CUSTOM_VALIDATION_FAILED",
+  message: "Custom validation failed for attribute username"
+}
+```
 
-Error code when no custom code is provided: `CUSTOM_VALIDATION_FAILED`
+`customValidator` works recursively inside `objectAttr` and
+`elementConstraints`. Structured errors preserve the corresponding
+nested and array paths.
+
+When using `perfectPayload()`, `customValidator` must remain
+synchronous. A Promise-returning validator throws:
+
+```text
+perfect-payload:- customValidator must be synchronous for attribute username
+```
+
+For asynchronous custom validation, use `perfectPayloadAsync()`.
+
+## Asynchronous Validation
+
+`perfectPayloadAsync()` supports both synchronous and asynchronous
+`customValidator` functions without changing the behavior of
+`perfectPayload()`.
+
+```js
+import { perfectPayloadAsync } from "perfect-payload";
+
+const rules = {
+  username: {
+    mandatory: true,
+    type: "string",
+    trim: true,
+
+    customValidator: async (value) => {
+      const available = await checkUsernameAvailability(value);
+      return available;
+    },
+
+    customValidatorCode: "USERNAME_TAKEN",
+    customValidatorError: "Username is already taken",
+  },
+};
+
+const result = await perfectPayloadAsync(
+  {
+    username: "  kiran  ",
+  },
+  rules,
+);
+```
+
+On success, transformations are preserved:
+
+```js
+{
+  statusCode: 200,
+  valid: true,
+  validatedPayload: {
+    username: "kiran"
+  }
+}
+```
+
+On asynchronous validation failure:
+
+```js
+{
+  statusCode: 400,
+  valid: false,
+  message: "One or more attribute values are invalid",
+  errors: [
+    {
+      path: "username",
+      code: "USERNAME_TAKEN",
+      message: "Username is already taken"
+    }
+  ]
+}
+```
+
+### Async validator contract
+
+For `perfectPayloadAsync()`:
+
+```text
+true             → pass
+false            → validation failure
+anything != true → validation failure
+throw            → exception propagates
+rejected Promise → rejection propagates
+```
+
+A normal synchronous validator is also valid when using the asynchronous
+API:
+
+```js
+const rules = {
+  username: {
+    type: "string",
+    customValidator: (value) => value !== "admin",
+  },
+};
+
+const result = await perfectPayloadAsync(payload, rules);
+```
+
+A configured `customValidator` must be a function. Otherwise an error is
+thrown:
+
+```text
+perfect-payload:- customValidator must be a function for attribute username
+```
+
+### Validation order
+
+`perfectPayloadAsync()` uses two phases:
+
+1.  Transform the payload and run normal synchronous validation.
+2.  If phase 1 succeeds, run custom validators with `await`.
+
+If any synchronous validation error exists, phase 2 is skipped and the
+synchronous validation result is returned immediately.
+
+This means asynchronous validators can assume the payload has already
+passed its normal synchronous validation rules.
+
+### Nested async validation
+
+Async custom validators work recursively inside `objectAttr`:
+
+```js
+const rules = {
+  profile: {
+    type: "object",
+
+    objectAttr: {
+      username: {
+        type: "string",
+        trim: true,
+
+        customValidator: async (value) => {
+          return await isUsernameAvailable(value);
+        },
+
+        customValidatorCode: "USERNAME_TAKEN",
+        customValidatorError: "Username is already taken",
+      },
+    },
+  },
+};
+```
+
+A failure produces the complete path:
+
+```text
+profile.username
+```
+
+They also work inside `elementConstraints`:
+
+```js
+const rules = {
+  usernames: {
+    type: "array",
+
+    elementConstraints: {
+      type: "string",
+      trim: true,
+
+      customValidator: async (value) => {
+        return await isUsernameAvailable(value);
+      },
+
+      customValidatorCode: "USERNAME_TAKEN",
+      customValidatorError: "Username is already taken",
+    },
+  },
+};
+```
+
+For an invalid second element:
+
+```text
+usernames[1]
+```
+
+Deep combinations of objects and arrays preserve every level of the
+path:
+
+```text
+products[1].seller.username
+profile.teams[1].members[1].username
+```
+
+Default async custom-validation messages also use the final indexed
+path:
+
+```js
+{
+  path: "users[1].username",
+  code: "CUSTOM_VALIDATION_FAILED",
+  message: "Custom validation failed for attribute users[1].username"
+}
+```
+
+### Transform remains synchronous
+
+`perfectPayloadAsync()` makes custom validation asynchronous; it does
+not make `transform` asynchronous.
+
+`transform` must still be synchronous:
+
+```js
+transform: (value, payload) => {
+  return value;
+};
+```
+
+An async transformer or a transformer that returns a Promise is not
+supported.
 
 ## Error Codes
 
@@ -1277,17 +1675,17 @@ const result = perfectPayload(payload, validationRules);
 
 if (!result.valid) {
 
-  const emailError = result.errors.find(
+  const emailError = result.errors.find(
 
-    (error) => error.code === "INVALID_EMAIL",
+    (error) => error.code === "INVALID_EMAIL",
 
-  );
+  );
 
-  if (emailError) {
+  if (emailError) {
 
-    **// Handle invalid email**
+    ***// Handle invalid email***
 
-  }
+  }
 
 }
 ```
@@ -1304,11 +1702,11 @@ keeping the same structured error format:
 
 {
 
-  path: "email",
+  path: "email",
 
-  code: "INVALID_EMAIL",
+  code: "INVALID_EMAIL",
 
-  message: "Email address is invalid"
+  message: "Email address is invalid"
 
 }
 ```
@@ -1335,11 +1733,11 @@ If `email` is missing:
 
 {
 
-  path: "email",
+  path: "email",
 
-  code: "REQUIRED",
+  code: "REQUIRED",
 
-  message: "Email is required"
+  message: "Email is required"
 
 }
 ```
@@ -1350,11 +1748,11 @@ If `email` is present but invalid:
 
 {
 
-  path: "email",
+  path: "email",
 
-  code: "INVALID_EMAIL",
+  code: "INVALID_EMAIL",
 
-  message: "Email address is invalid"
+  message: "Email address is invalid"
 
 }
 ```
@@ -1443,53 +1841,53 @@ Example result:
 
 {
 
-  statusCode: 400,
+  statusCode: 400,
 
-  valid: false,
+  valid: false,
 
-  message:
+  message:
 
-    "One or more attribute values are invalid",
+    "One or more attribute values are invalid",
 
-  errors: [
+  errors: [
 
-    {
+    {
 
-      path: "username",
+      path: "username",
 
-      code: "MIN_LENGTH",
+      code: "MIN_LENGTH",
 
-      message:
+      message:
 
-        "Username must contain at least 3 characters"
+        "Username must contain at least 3 characters"
 
-    },
+    },
 
-    {
+    {
 
-      path: "age",
+      path: "age",
 
-      code: "MIN_VALUE",
+      code: "MIN_VALUE",
 
-      message:
+      message:
 
-        "Age must be at least 18"
+        "Age must be at least 18"
 
-    },
+    },
 
-    {
+    {
 
-      path: "score",
+      path: "score",
 
-      code: "OUT_OF_RANGE",
+      code: "OUT_OF_RANGE",
 
-      message:
+      message:
 
-        "Score must be between 0 and 100"
+        "Score must be between 0 and 100"
 
-    }
+    }
 
-  ]
+  ]
 
 }
 ```
@@ -1520,11 +1918,11 @@ Still returns:
 
 {
 
-  path: "age",
+  path: "age",
 
-  code: "MIN_VALUE",
+  code: "MIN_VALUE",
 
-  message: "You must be 18 or older"
+  message: "You must be 18 or older"
 
 }
 ```
@@ -1571,21 +1969,21 @@ When validation succeeds, `validatedPayload` is automatically added:
 
 {
 
-  statusCode: 201,
+  statusCode: 201,
 
-  valid: true,
+  valid: true,
 
-  message: "Payload validated successfully",
+  message: "Payload validated successfully",
 
-  validatedPayload: {
+  validatedPayload: {
 
-    name: "Kiran",
+    name: "Kiran",
 
-    email: "kiran@example.com",
+    email: "kiran@example.com",
 
-    age: 29
+    age: 29
 
-  }
+  }
 
 }
 ```
@@ -1620,27 +2018,27 @@ When validation fails, `errors` is automatically added:
 
 {
 
-  statusCode: 422,
+  statusCode: 422,
 
-  valid: false,
+  valid: false,
 
-  message: "Payload validation failed",
+  message: "Payload validation failed",
 
-  errors: [
+  errors: [
 
-    {
+    {
 
-      path: "email",
+      path: "email",
 
-      code: "INVALID_EMAIL",
+      code: "INVALID_EMAIL",
 
-      message:
+      message:
 
-        "Invalid email format for attribute email"
+        "Invalid email format for attribute email"
 
-    }
+    }
 
-  ]
+  ]
 
 }
 ```
@@ -1703,15 +2101,15 @@ is:
 
 {
 
-  statusCode: 200,
+  statusCode: 200,
 
-  valid: true,
+  valid: true,
 
-  validatedPayload: {
+  validatedPayload: {
 
-    **// validated fields**
+    ***// validated fields***
 
-  }
+  }
 
 }
 ```
@@ -1722,25 +2120,25 @@ The default invalid response is:
 
 {
 
-  statusCode: 400,
+  statusCode: 400,
 
-  valid: false,
+  valid: false,
 
-  message: "One or more attribute values are invalid",
+  message: "One or more attribute values are invalid",
 
-  errors: [
+  errors: [
 
-    {
+    {
 
-      path: "field",
+      path: "field",
 
-      code: "ERROR_CODE",
+      code: "ERROR_CODE",
 
-      message: "Validation error message"
+      message: "Validation error message"
 
-    }
+    }
 
-  ]
+  ]
 
 }
 ```
@@ -1771,11 +2169,11 @@ An error can be returned as:
 
 {
 
-  path: "email",
+  path: "email",
 
-  code: "INVALID_EMAIL",
+  code: "INVALID_EMAIL",
 
-  message: "Invalid email format for attribute email"
+  message: "Invalid email format for attribute email"
 
 }
 ```
@@ -1834,13 +2232,13 @@ its complete nested path:
 
 {
 
-  path: "address.location.latitude",
+  path: "address.location.latitude",
 
-  code: "INVALID_TYPE",
+  code: "INVALID_TYPE",
 
-  message:
+  message:
 
-    "Invalid type for attribute address.location.latitude, required number value"
+    "Invalid type for attribute address.location.latitude, required number value"
 
 }
 ```
@@ -1888,13 +2286,13 @@ The invalid third element is reported as:
 
 {
 
-  path: "marks[2]",
+  path: "marks[2]",
 
-  code: "OUT_OF_RANGE",
+  code: "OUT_OF_RANGE",
 
-  message:
+  message:
 
-    "Attribute marks[2] should have a value between 0 and 100"
+    "Attribute marks[2] should have a value between 0 and 100"
 
 }
 ```
@@ -1910,7 +2308,9 @@ marks[1]
 marks[2]
 ```
 
-Array-level constraints such as `minItems` and `maxItems` report the path of the array itself. For nested arrays, the complete parent path is retained, for example `orders[1].items`.
+Array-level constraints such as `minItems` and `maxItems` report the
+path of the array itself. For nested arrays, the complete parent path is
+retained, for example `orders[1].items`.
 
 ### Nested Fields Inside Arrays
 
@@ -1969,11 +2369,11 @@ Result:
 
 {
 
-  "email": "Invalid email format for attribute email",
+  "email": "Invalid email format for attribute email",
 
-  "address.location.latitude": "Invalid type for attribute address.location.latitude, required number value",
+  "address.location.latitude": "Invalid type for attribute address.location.latitude, required number value",
 
-  "marks[2]": "Attribute marks[2] should have a value between 0 and 100"
+  "marks[2]": "Attribute marks[2] should have a value between 0 and 100"
 
 }
 ```
@@ -1988,61 +2388,61 @@ sample-1
 
 {
 
-  firstName: {
+  firstName: {
 
-    mandatory: true,
+    mandatory: true,
 
-    allowNull: false,
+    allowNull: false,
 
-    type: "string",
+    type: "string",
 
-    minLength: 3,
+    minLength: 3,
 
-    minLengthError: "First name must have minimum 3 characters."
+    minLengthError: "First name must have minimum 3 characters."
 
-  },
+  },
 
-  lastName: {
+  lastName: {
 
-    mandatory: false,
+    mandatory: false,
 
-    allowNull: true,
+    allowNull: true,
 
-    type: "string",
+    type: "string",
 
-  },
+  },
 
-  email: {
+  email: {
 
-    mandatory: true,
+    mandatory: true,
 
-    allowNull: false,
+    allowNull: false,
 
-    type: "email",
+    type: "email",
 
-  },
+  },
 
-  phone: {
+  phone: {
 
-    mandatory: true,
+    mandatory: true,
 
-    allowNull: false,
+    allowNull: false,
 
-    type: "string",
+    type: "string",
 
-  },
+  },
 
-  age: {
+  age: {
 
-    mandatory: false,
+    mandatory: false,
 
-    type: "number",
+    type: "number",
 
-    min: 1,
+    min: 1,
 
-    max: 120,
+    max: 120,
 
-  },
+  },
 
 };
 ```
@@ -2053,271 +2453,271 @@ sample-2
 
 {
 
-  id: {
+  id: {
 
-    mandatory: true,
+    mandatory: true,
 
-    allowNull: true,
+    allowNull: true,
 
-    type: "uuidv4",
+    type: "uuidv4",
 
-  },
+  },
 
-  batchId: {
+  batchId: {
 
-    mandatory: true,
+    mandatory: true,
 
-    allowNull: true,
+    allowNull: true,
 
-    type: "objectId",
+    type: "objectId",
 
-  },
+  },
 
-  firstName: {
+  firstName: {
 
-    mandatory: true,
+    mandatory: true,
 
-    type: "string",
+    type: "string",
 
-    minLength: 3,
+    minLength: 3,
 
-  },
+  },
 
-  lastName: {
+  lastName: {
 
-    mandatory: false,
+    mandatory: false,
 
-    allowNull: true,
+    allowNull: true,
 
-    type: "string",
+    type: "string",
 
-  },
+  },
 
-  age: {
+  age: {
 
-    type: "number",
+    type: "number",
 
-    min: 0.1,
+    min: 0.1,
 
-    max: 120,
+    max: 120,
 
-  },
+  },
 
-  isAdult: {
+  isAdult: {
 
-    type: "boolean",
+    type: "boolean",
 
-  },
+  },
 
-  totalWins: {
+  totalWins: {
 
-    type: "number",
+    type: "number",
 
-    min: 0,
+    min: 0,
 
-    preventDecimal: true,
+    preventDecimal: true,
 
-  },
+  },
 
-  email: {
+  email: {
 
-    regex: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\\\.[a-zA-Z]{2,}$/,
+    regex: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\\\\\\\.[a-zA-Z]{2,}$/,
 
-  },
+  },
 
-  githubLink: {
+  githubLink: {
 
-    type: "url",
+    type: "url",
 
-  },
+  },
 
-  accountStatus: {
+  accountStatus: {
 
-    type: "enum",
+    type: "enum",
 
-    enumValues: ["Active", "Inactive", 200],
+    enumValues: ["Active", "Inactive", 200],
 
-  },
+  },
 
-  marks: {
+  marks: {
 
-    range: "0-100",
+    range: "0-100",
 
-  },
+  },
 
-  allMarks: {
+  allMarks: {
 
-    type: "array",
+    type: "array",
 
-    allowEmptyArray: false,
+    allowEmptyArray: false,
 
-    elementConstraints: {
+    elementConstraints: {
 
-      type: "number",
+      type: "number",
 
-      allowNull: false,
+      allowNull: false,
 
-      range: "0-100",
+      range: "0-100",
 
-    },
+    },
 
-  },
+  },
 
-  totalScore: {
+  totalScore: {
 
-    type: "number",
+    type: "number",
 
-    dependency: {
+    dependency: {
 
-      result: {
+      result: {
 
-        setDependencyRule: (totalScore, result) => {
+        setDependencyRule: (totalScore, result) => {
 
-          return { mandatory: true, allowNull: false, type: "string" };
+          return { mandatory: true, allowNull: false, type: "string" };
 
-        },
+        },
 
-      },
+      },
 
-    },
+    },
 
-  },
+  },
 
-  result: {
+  result: {
 
-    type: "string",
+    type: "string",
 
-    dependency: {
+    dependency: {
 
-      totalScore: {
+      totalScore: {
 
-        setDependencyRule: (result, totalScore) => {
+        setDependencyRule: (result, totalScore) => {
 
-          return { mandatory: true, allowNull: false, type: "number" };
+          return { mandatory: true, allowNull: false, type: "number" };
 
-        },
+        },
 
-      },
+      },
 
-    },
+    },
 
-  },
+  },
 
-  minSalary: {
+  minSalary: {
 
-    mandatory: true,
+    mandatory: true,
 
-    min: 1,
+    min: 1,
 
-    type: "number",
+    type: "number",
 
-    dependency: {
+    dependency: {
 
-      maxSalary: {
+      maxSalary: {
 
-        setDependencyRule: (minSalary, maxSalary) => {
+        setDependencyRule: (minSalary, maxSalary) => {
 
-          return {
+          return {
 
-            mandatory: true,
+            mandatory: true,
 
-            min: minSalary + 1,
+            min: minSalary + 1,
 
-            minError: "maxSalary must be more than minSalary",
+            minError: "maxSalary must be more than minSalary",
 
-          };
+          };
 
-        },
+        },
 
-      },
+      },
 
-    },
+    },
 
-  },
+  },
 
-  maxSalary: {
+  maxSalary: {
 
-    dependency: {
+    dependency: {
 
-      minSalary: {
+      minSalary: {
 
-        setDependencyRule: (maxSalary, minSalary) => {
+        setDependencyRule: (maxSalary, minSalary) => {
 
-          return {
+          return {
 
-            mandatory: true,
+            mandatory: true,
 
-            max: maxSalary - 1,
+            max: maxSalary - 1,
 
-            maxError: "minSalary must be less than maxSalary",
+            maxError: "minSalary must be less than maxSalary",
 
-          };
+          };
 
-        },
+        },
 
-      },
+      },
 
-    },
+    },
 
-  },
+  },
 
-  address: {
+  address: {
 
-    mandatory: true,
+    mandatory: true,
 
-    type: "object",
+    type: "object",
 
-    allowEmptyObject: false,
+    allowEmptyObject: false,
 
-    objectAttr: {
+    objectAttr: {
 
-      country: { mandatory: true, type: "string" },
+      country: { mandatory: true, type: "string" },
 
-      state: {
+      state: {
 
-        mandatory: true,
+        mandatory: true,
 
-        type: "string",
+        type: "string",
 
-      },
+      },
 
-      city: {},
+      city: {},
 
-      zip: {
+      zip: {
 
-        mandatory: true,
+        mandatory: true,
 
-        type: "string",
+        type: "string",
 
-      },
+      },
 
-      position: {
+      position: {
 
-        mandatory: true,
+        mandatory: true,
 
-        type: "object",
+        type: "object",
 
-        allowEmptyObject: false,
+        allowEmptyObject: false,
 
-        objectAttr: {
+        objectAttr: {
 
-          lattitude: { mandatory: true, type: "number" },
+          lattitude: { mandatory: true, type: "number" },
 
-          longitude: {
+          longitude: {
 
-            mandatory: true,
+            mandatory: true,
 
-            type: "number",
+            type: "number",
 
-          },
+          },
 
-        },
+        },
 
-      },
+      },
 
-    },
+    },
 
-  },
+  },
 
 }
 ```
@@ -2328,15 +2728,15 @@ sample-2
 
 ```js
 
-**// validatePayload is the middleware that invokes perfectPayload()**
+***// validatePayload is the middleware that invokes perfectPayload()***
 
 router.post(
 
-  "/payload-validation",
+  "/payload-validation",
 
-  validatePayload({ rule: <your validation rule json object> }),
+  validatePayload({ rule: <your validation rule json object> }),
 
-  (req, res) => res.send("OK")
+  (req, res) => res.send("OK")
 
 );
 ```
@@ -2363,6 +2763,47 @@ export const validatePayload = ({ rule }) => {
     }
   };
 };
+```
+
+#### Async ES Modules middleware example
+
+When your schema contains an asynchronous `customValidator`, the
+middleware itself must be `async` and `perfectPayloadAsync()` must be
+awaited:
+
+```js
+import { perfectPayloadAsync } from "perfect-payload";
+
+export const validatePayloadAsync = ({ rule }) => {
+  return async (req, res, next) => {
+    try {
+      const { statusCode, ...response } = await perfectPayloadAsync(
+        req?.body,
+        rule,
+      );
+
+      if (+statusCode >= 200 && +statusCode <= 299) {
+        req.validatedBody = response?.validatedPayload;
+        next();
+      } else {
+        res.status(statusCode).json(response);
+      }
+    } catch (error) {
+      console.error("Error validating payload", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  };
+};
+```
+
+Route usage:
+
+```js
+router.post(
+  "/payload-validation",
+  validatePayloadAsync({ rule: <your validation rule json object> }),
+  (req, res) => res.send("OK"),
+);
 ```
 
 #### CommonJS middleware example
