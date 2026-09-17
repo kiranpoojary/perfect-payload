@@ -4624,6 +4624,227 @@ check(
     inheritedUnknownRejectResult.errors?.[0]?.code === "UNKNOWN_FIELD",
 );
 
+// ==================================================
+// v1.7.0 - UNKNOWN FIELD - ARRAY INDEXED MESSAGE
+// ==================================================
+
+const arrayUnknownFieldMessageResult = perfectPayload(
+  {
+    products: [
+      {
+        productId: "P100",
+        quantity: 2,
+        internalId: "INT-100",
+      },
+    ],
+  },
+  {
+    products: {
+      mandatory: true,
+      type: "array",
+      elementConstraints: {
+        type: "object",
+        objectAttr: {
+          productId: {
+            mandatory: true,
+            type: "string",
+          },
+          quantity: {
+            mandatory: true,
+            type: "number",
+          },
+        },
+      },
+    },
+  },
+  {
+    unknownFields: "reject",
+  },
+);
+
+check(
+  "v1.7 unknown field inside array includes index in path and message",
+  arrayUnknownFieldMessageResult.valid === false &&
+    arrayUnknownFieldMessageResult.errors?.length === 1 &&
+    arrayUnknownFieldMessageResult.errors?.[0]?.path ===
+      "products[0].internalId" &&
+    arrayUnknownFieldMessageResult.errors?.[0]?.code === "UNKNOWN_FIELD" &&
+    arrayUnknownFieldMessageResult.errors?.[0]?.message ===
+      "Unknown field products[0].internalId is not allowed",
+);
+
+// ==================================================
+// v1.7.0 - THREE ARGUMENT API - CUSTOM RESPONSES
+// ==================================================
+
+const v17CustomValidResponseResult = perfectPayload(
+  {
+    name: "  KIRAN  ",
+    role: "developer",
+  },
+  {
+    name: {
+      mandatory: true,
+      type: "string",
+      trim: true,
+      lowercase: true,
+    },
+  },
+  {
+    unknownFields: "allow",
+    validPayloadResponse: {
+      statusCode: 201,
+      valid: true,
+      message: "Payload validation successful",
+    },
+    inValidPayloadResponse: {
+      statusCode: 422,
+      valid: false,
+      message: "Custom validation failed",
+    },
+  },
+);
+
+check(
+  "v1.7 three argument API uses custom valid response",
+  v17CustomValidResponseResult.statusCode === 201 &&
+    v17CustomValidResponseResult.valid === true &&
+    v17CustomValidResponseResult.message === "Payload validation successful" &&
+    v17CustomValidResponseResult.validatedPayload?.name === "kiran" &&
+    v17CustomValidResponseResult.validatedPayload?.role === "developer",
+);
+
+const v17CustomInvalidResponseResult = perfectPayload(
+  {
+    email: "invalid-email",
+    role: "developer",
+  },
+  {
+    email: {
+      mandatory: true,
+      type: "email",
+    },
+  },
+  {
+    unknownFields: "allow",
+    validPayloadResponse: {
+      statusCode: 201,
+      valid: true,
+      message: "Payload validation successful",
+    },
+    inValidPayloadResponse: {
+      statusCode: 422,
+      valid: false,
+      message: "Custom validation failed",
+    },
+  },
+);
+
+check(
+  "v1.7 three argument API uses custom invalid response",
+  v17CustomInvalidResponseResult.statusCode === 422 &&
+    v17CustomInvalidResponseResult.valid === false &&
+    v17CustomInvalidResponseResult.message === "Custom validation failed" &&
+    v17CustomInvalidResponseResult.errors?.length === 1 &&
+    v17CustomInvalidResponseResult.errors?.[0]?.path === "email" &&
+    v17CustomInvalidResponseResult.errors?.[0]?.code === "INVALID_EMAIL",
+);
+
+// ==================================================
+// v1.7.0 - ASYNC THREE ARGUMENT API - CUSTOM RESPONSES
+// ==================================================
+
+const v17AsyncRules = {
+  username: {
+    mandatory: true,
+    type: "string",
+    trim: true,
+    lowercase: true,
+    customValidator: async (value) => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      return value !== "blocked";
+    },
+  },
+
+  profile: {
+    mandatory: true,
+    type: "object",
+    objectAttr: {
+      city: {
+        mandatory: true,
+        type: "string",
+      },
+    },
+  },
+};
+
+const v17AsyncOptions = {
+  unknownFields: "allow",
+
+  validPayloadResponse: {
+    statusCode: 201,
+    valid: true,
+    message: "Async validation successful",
+  },
+
+  inValidPayloadResponse: {
+    statusCode: 422,
+    valid: false,
+    message: "Async validation failed",
+  },
+};
+
+// Async success
+const v17AsyncValidResponseResult = await perfectPayloadAsync(
+  {
+    username: "  KIRAN  ",
+    role: "developer",
+    profile: {
+      city: "Bengaluru",
+      internalCode: "BLR-01",
+    },
+  },
+  v17AsyncRules,
+  v17AsyncOptions,
+);
+
+check(
+  "v1.7 async three argument API uses options and custom valid response",
+  v17AsyncValidResponseResult.statusCode === 201 &&
+    v17AsyncValidResponseResult.valid === true &&
+    v17AsyncValidResponseResult.message === "Async validation successful" &&
+    v17AsyncValidResponseResult.validatedPayload?.username === "kiran" &&
+    v17AsyncValidResponseResult.validatedPayload?.role === "developer" &&
+    v17AsyncValidResponseResult.validatedPayload?.profile?.city ===
+      "Bengaluru" &&
+    v17AsyncValidResponseResult.validatedPayload?.profile?.internalCode ===
+      "BLR-01",
+);
+
+// Async customValidator failure
+const v17AsyncInvalidResponseResult = await perfectPayloadAsync(
+  {
+    username: "blocked",
+    role: "developer",
+    profile: {
+      city: "Bengaluru",
+    },
+  },
+  v17AsyncRules,
+  v17AsyncOptions,
+);
+
+check(
+  "v1.7 async three argument API uses custom invalid response",
+  v17AsyncInvalidResponseResult.statusCode === 422 &&
+    v17AsyncInvalidResponseResult.valid === false &&
+    v17AsyncInvalidResponseResult.message === "Async validation failed" &&
+    v17AsyncInvalidResponseResult.errors?.length === 1 &&
+    v17AsyncInvalidResponseResult.errors?.[0]?.path === "username" &&
+    v17AsyncInvalidResponseResult.errors?.[0]?.code ===
+      "CUSTOM_VALIDATION_FAILED",
+);
+
 // ###########################
 
 // ========================================================
