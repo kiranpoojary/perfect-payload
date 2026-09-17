@@ -537,6 +537,45 @@ export function perfectPayload(
   );
 }
 
+export async function perfectPayloadAsync(
+  data = {},
+  dataValidationRule = {},
+  validPayloadResponse = { statusCode: 200, valid: true },
+  inValidPayloadResponse = {
+    statusCode: 400,
+    valid: false,
+    message: "One or more attribute values are invalid",
+  },
+) {
+  const validationResult = perfectPayloadStructured(
+    data,
+    dataValidationRule,
+    validPayloadResponse,
+    inValidPayloadResponse,
+    "",
+    {
+      skipCustomValidator: true,
+    },
+  );
+
+  if (validationResult?.errors?.length) {
+    return validationResult;
+  }
+
+  const rowErrors = await runAsyncCustomValidators(
+    validationResult?.validatedPayload ?? {},
+    dataValidationRule,
+  );
+  if (rowErrors.length > 0) {
+    return {
+      ...inValidPayloadResponse,
+      errors: rowErrors,
+    };
+  }
+
+  return validationResult;
+}
+
 function perfectPayloadStructured(
   data = {},
   dataValidationRule = {},
@@ -547,9 +586,11 @@ function perfectPayloadStructured(
     message: "One or more attribute values are invalid",
   },
   basePath = "",
+  options = {},
 ) {
   let validatedPayload = {};
   let rowErrors = [];
+  const skipCustomValidator = options?.skipCustomValidator === true;
 
   for (const attributeName in dataValidationRule) {
     let addNextError = true;
@@ -562,7 +603,7 @@ function perfectPayloadStructured(
       basePath,
     );
 
-    const attributeValue = data?.[attributeName] ?? null;
+    let attributeValue = data?.[attributeName] ?? null;
 
     const nullAllowed =
       dataValidationRule?.[attributeName]?.["allowNull"] ?? true;
@@ -570,7 +611,78 @@ function perfectPayloadStructured(
     const isMandatoryField = attributeRules?.["mandatory"] ?? false;
 
     const attrExist = Object.keys(data ?? {}).includes(attributeName);
+    // TRANSFORMATIONS START
+    // NO MULTI TRANSFORMATION
+    if (
+      attributeRules?.lowercase === true &&
+      attributeRules?.uppercase === true
+    ) {
+      throw new Error(
+        `perfect-payload:- lowercase and uppercase cannot both be enabled for attribute ${attributePath}`,
+      );
+    }
+    // TRIM
+    if (
+      attrExist &&
+      attributeValue !== null &&
+      attributeRules?.trim === true &&
+      typeof attributeValue === "string"
+    ) {
+      attributeValue = attributeValue.trim();
+    }
+    // LOWERCASE
+    if (
+      attrExist &&
+      attributeValue !== null &&
+      attributeRules?.lowercase === true &&
+      typeof attributeValue === "string"
+    ) {
+      attributeValue = attributeValue.toLowerCase();
+    }
 
+    // UPPERCASE
+
+    if (
+      attrExist &&
+      attributeValue !== null &&
+      attributeRules?.uppercase === true &&
+      typeof attributeValue === "string"
+    ) {
+      attributeValue = attributeValue.toUpperCase();
+    }
+
+    // CUSTOM TRANSFORM
+
+    if (
+      attrExist &&
+      attributeValue !== null &&
+      attributeRules?.transform !== undefined
+    ) {
+      const transformer = attributeRules.transform;
+
+      if (typeof transformer !== "function") {
+        throw new Error(
+          `perfect-payload:- transform must be a function for attribute ${attributePath}`,
+        );
+      }
+
+      const transformedValue = transformer(attributeValue, data);
+
+      if (transformedValue && typeof transformedValue.then === "function") {
+        throw new Error(
+          `perfect-payload:- transform must be synchronous for attribute ${attributePath}`,
+        );
+      }
+
+      if (transformedValue === undefined) {
+        throw new Error(
+          `perfect-payload:- transform must not return undefined for attribute ${attributePath}`,
+        );
+      }
+
+      attributeValue = transformedValue;
+    }
+    // TRANSFORMATIONS END
     for (const ruleName in attributeRules) {
       switch (ruleName) {
         // ==================================================
@@ -674,6 +786,9 @@ function perfectPayloadStructured(
             if (isArray(attributeValue) && attributeValue.length > 0) {
               let elementError = null;
 
+              // Clone so original payload array is not mutated
+              const transformedArray = [...attributeValue];
+
               for (
                 let elementIndex = 0;
                 elementIndex < attributeValue.length;
@@ -681,13 +796,24 @@ function perfectPayloadStructured(
               ) {
                 const element = attributeValue[elementIndex];
 
-                const { errors = [] } = perfectPayloadStructured(
+                const {
+                  errors = [],
+                  validatedPayload: elementValidatedPayload,
+                } = perfectPayloadStructured(
                   {
                     [attributeName]: element,
                   },
                   {
                     [attributeName]: attributeRules[ruleName],
                   },
+                  { statusCode: 200, valid: true },
+                  {
+                    statusCode: 400,
+                    valid: false,
+                    message: "One or more attribute values are invalid",
+                  },
+                  "",
+                  options,
                 );
 
                 if (errors.length > 0) {
@@ -714,17 +840,62 @@ function perfectPayloadStructured(
 
                   break;
                 }
+
+                // Preserve the transformed element
+                transformedArray[elementIndex] =
+                  elementValidatedPayload?.[attributeName];
               }
 
               if (elementError) {
                 rowErrors.push(elementError);
                 addNextError = false;
+              } else {
+                // All elements passed, so use transformed values
+                attributeValue = transformedArray;
               }
             }
           }
 
           break;
+        case "minItems":
+          if (
+            addNextError &&
+            attrExist &&
+            attributeValue !== null &&
+            isArray(attributeValue) &&
+            attributeValue.length < attributeRules[ruleName]
+          ) {
+            addStructuredError(
+              rowErrors,
+              attributePath,
+              "MIN_ITEMS",
+              `Attribute ${attributePath} must contain at least ${attributeRules[ruleName]} item(s)`,
+            );
 
+            addNextError = false;
+          }
+
+          break;
+
+        case "maxItems":
+          if (
+            addNextError &&
+            attrExist &&
+            attributeValue !== null &&
+            isArray(attributeValue) &&
+            attributeValue.length > attributeRules[ruleName]
+          ) {
+            addStructuredError(
+              rowErrors,
+              attributePath,
+              "MAX_ITEMS",
+              `Attribute ${attributePath} must contain at most ${attributeRules[ruleName]} item(s)`,
+            );
+
+            addNextError = false;
+          }
+
+          break;
         // ==================================================
         // REGEX
         // ==================================================
@@ -759,7 +930,10 @@ function perfectPayloadStructured(
 
               switch (expectedType) {
                 case "number":
-                  if (!isNumber(attributeValue)) {
+                  if (
+                    !isNumber(attributeValue) ||
+                    Number.isNaN(attributeValue)
+                  ) {
                     addStructuredError(
                       rowErrors,
                       attributePath,
@@ -776,7 +950,6 @@ function perfectPayloadStructured(
                   }
 
                   break;
-
                 case "string":
                   if (!isString(attributeValue)) {
                     addStructuredError(
@@ -1200,24 +1373,27 @@ function perfectPayloadStructured(
         // ==================================================
         // NESTED OBJECT
         // ==================================================
-
         case "objectAttr":
           if (addNextError) {
-            const { errors = [] } = perfectPayloadStructured(
-              attributeValue,
-              attributeRules[ruleName],
-              { statusCode: 200, valid: true },
-              {
-                statusCode: 400,
-                valid: false,
-                message: "One or more attribute values are invalid",
-              },
-              attributePath,
-            );
+            const { errors = [], validatedPayload: nestedValidatedPayload } =
+              perfectPayloadStructured(
+                attributeValue,
+                attributeRules?.[ruleName],
+                { statusCode: 200, valid: true },
+                {
+                  statusCode: 400,
+                  valid: false,
+                  message: "One or more attribute values are invalid",
+                },
+                attributePath,
+                options,
+              );
+
+            if (errors.length === 0) {
+              attributeValue = nestedValidatedPayload;
+            }
 
             rowErrors = [...rowErrors, ...errors];
-
-            addNextError = true;
           }
 
           break;
@@ -1275,6 +1451,52 @@ function perfectPayloadStructured(
                   `perfect-payload:- function setDependencyRule not found in ${attr} dependency `,
                 );
               }
+            }
+          }
+
+          break;
+
+        // ==================================================
+        // CUSTOM VALIDATOR
+        // ==================================================
+
+        case "customValidator":
+          if (
+            !skipCustomValidator &&
+            addNextError &&
+            attrExist &&
+            attributeValue !== null
+          ) {
+            const validator = attributeRules?.[ruleName];
+
+            if (typeof validator !== "function") {
+              throw new Error(
+                `perfect-payload:- customValidator must be a function for attribute ${attributePath}`,
+              );
+            }
+
+            const validationResult = validator(attributeValue, data);
+
+            if (
+              validationResult &&
+              typeof validationResult.then === "function"
+            ) {
+              throw new Error(
+                `perfect-payload:- customValidator must be synchronous for attribute ${attributePath}`,
+              );
+            }
+
+            if (validationResult !== true) {
+              addStructuredError(
+                rowErrors,
+                attributePath,
+                attributeRules?.["customValidatorCode"] ||
+                  "CUSTOM_VALIDATION_FAILED",
+                attributeRules?.["customValidatorError"] ||
+                  `Custom validation failed for attribute ${attributePath}`,
+              );
+
+              addNextError = false;
             }
           }
 
@@ -1426,4 +1648,119 @@ function isObjectId(id) {
 
 function isPassedRegex(reExpression, value) {
   return reExpression.test(value);
+}
+
+async function runAsyncCustomValidators(
+  data = {},
+  dataValidationRule = {},
+  basePath = "",
+) {
+  const errors = [];
+
+  for (const attributeName in dataValidationRule) {
+    const attributeRules = dataValidationRule?.[attributeName];
+
+    const attrExist = Object.keys(data ?? {}).includes(attributeName);
+
+    if (!attrExist) {
+      continue;
+    }
+
+    const attributeValue = data?.[attributeName];
+
+    const attributePath = getAttributePath(
+      attributeName,
+      attributeRules,
+      basePath,
+    );
+
+    // customValidator
+    if (
+      Object.prototype.hasOwnProperty.call(
+        attributeRules ?? {},
+        "customValidator",
+      )
+    ) {
+      if (typeof attributeRules.customValidator !== "function") {
+        throw new Error(
+          `perfect-payload:- customValidator must be a function for attribute ${attributePath}`,
+        );
+      }
+
+      if (attributeValue !== null) {
+        const validationResponse = await attributeRules.customValidator(
+          attributeValue,
+          data,
+        );
+
+        if (validationResponse !== true) {
+          addStructuredError(
+            errors,
+            attributePath,
+            attributeRules?.customValidatorCode || "CUSTOM_VALIDATION_FAILED",
+            attributeRules?.customValidatorError ||
+              `Custom validation failed for attribute ${attributePath}`,
+          );
+        }
+      }
+    }
+
+    // nested objectAttr
+    if (
+      attributeValue !== null &&
+      typeof attributeValue === "object" &&
+      !Array.isArray(attributeValue) &&
+      attributeRules?.objectAttr
+    ) {
+      const nestedErrors = await runAsyncCustomValidators(
+        attributeValue,
+        attributeRules.objectAttr,
+        attributePath,
+      );
+
+      errors.push(...nestedErrors);
+    }
+
+    // nested elementConstraints
+    if (Array.isArray(attributeValue) && attributeRules?.elementConstraints) {
+      for (
+        let elementIndex = 0;
+        elementIndex < attributeValue.length;
+        elementIndex++
+      ) {
+        const element = attributeValue[elementIndex];
+
+        const elementErrors = await runAsyncCustomValidators(
+          {
+            [attributeName]: element,
+          },
+          {
+            [attributeName]: attributeRules.elementConstraints,
+          },
+        );
+
+        for (const elementError of elementErrors) {
+          const indexedPath = replaceRootPath(
+            elementError.path,
+            attributeName,
+            `${attributePath}[${elementIndex}]`,
+          );
+
+          errors.push({
+            ...elementError,
+            path: indexedPath,
+
+            message:
+              elementError.code === "CUSTOM_VALIDATION_FAILED" &&
+              elementError.message ===
+                `Custom validation failed for attribute ${elementError.path}`
+                ? `Custom validation failed for attribute ${indexedPath}`
+                : elementError.message,
+          });
+        }
+      }
+    }
+  }
+
+  return errors;
 }
