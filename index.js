@@ -1280,6 +1280,47 @@ function perfectPayloadStructured(
 
           break;
 
+        // ==================================================
+        // CUSTOM VALIDATOR
+        // ==================================================
+
+        case "customValidator":
+          if (addNextError && attrExist && attributeValue !== null) {
+            const validator = attributeRules?.[ruleName];
+
+            if (typeof validator !== "function") {
+              throw new Error(
+                `perfect-payload:- customValidator must be a function for attribute ${attributePath}`,
+              );
+            }
+
+            const validationResult = validator(attributeValue, data);
+
+            if (
+              validationResult &&
+              typeof validationResult.then === "function"
+            ) {
+              throw new Error(
+                `perfect-payload:- customValidator must be synchronous for attribute ${attributePath}`,
+              );
+            }
+
+            if (validationResult !== true) {
+              addStructuredError(
+                rowErrors,
+                attributePath,
+                attributeRules?.["customValidatorCode"] ||
+                  "CUSTOM_VALIDATION_FAILED",
+                attributeRules?.["customValidatorError"] ||
+                  `Custom validation failed for attribute ${attributePath}`,
+              );
+
+              addNextError = false;
+            }
+          }
+
+          break;
+
         default:
           break;
       }
