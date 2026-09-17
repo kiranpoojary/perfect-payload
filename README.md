@@ -24,13 +24,16 @@ lightweight.
   `perfectPayloadAsync()`
 - Transformed values returned through `validatedPayload`
 - Original input payload is not mutated
-- Extra payload fields are filtered from `validatedPayload`
+- Configurable unknown-field handling: `strip`, `allow`, or `reject`
+- Clean three-argument API with validation options in one object
 - Legacy `perfectPayloadV1()` retained during the migration period
 
 ## Quick Links
 
 - [Installation](#installation)
 - [Basic Usage](#basic-usage)
+- [Public API](#public-api)
+- [Unknown Field Handling](#unknown-field-handling)
 - [Synchronous vs Asynchronous
   Validation](#synchronous-vs-asynchronous-validation)
 - [Validation Rules](#validation-rules)
@@ -46,6 +49,31 @@ lightweight.
   Paths](#nested-objects-and-array-field-paths)
 - [Examples and Usage](#examples-and-usage)
 - [Legacy API](#legacy-api)
+
+## What's New in v1.7.0
+
+v1.7.0 introduces two API-level improvements:
+
+1.  `unknownFields` gives explicit control over fields that are not
+    declared in the validation schema: `"strip"`, `"allow"`, or
+    `"reject"`.
+2.  `perfectPayload()` and `perfectPayloadAsync()` now use a clean
+    three-argument API where custom response objects and other API
+    options live inside one `options` object.
+
+```js
+const result = perfectPayload(payload, rules, {
+  unknownFields: "reject",
+  inValidPayloadResponse: {
+    statusCode: 422,
+    valid: false,
+    message: "Payload validation failed",
+  },
+});
+```
+
+The default `unknownFields` mode is `"strip"`, preserving the previous
+validated-payload filtering behavior when no option is supplied.
 
 ## Installation
 
@@ -119,13 +147,11 @@ console.log(result);
 }
 ```
 
-Note: The validatedPayload contains only the fields
+By default, `validatedPayload` contains only fields defined in the
+validation schema. Extra payload fields are stripped unless
+`unknownFields` is explicitly configured as `"allow"` or `"reject"`.
 
-defined in the
-
-schema, automatically filtering out any extra attributes. You can use it
-
-to safely overwrite request.body or assign it to a new request property
+The original input payload is not mutated.
 
 (such as validatedBody, sanitisedData or parsedBody).
 
@@ -183,6 +209,375 @@ failure.
 
 \- Submitted payload values are not included in default error messages.
 
+## Public API
+
+For new implementations, both supported APIs use the same clean
+three-argument signature:
+
+```js
+perfectPayload(data, validationRules, options?)
+await perfectPayloadAsync(data, validationRules, options?)
+```
+
+The arguments are:
+
+---
+
+Argument Required Description
+
+---
+
+`data` No Payload/object to
+validate. Defaults to
+`{}`.
+
+`validationRules` No Validation schema.
+Defaults to `{}`.
+
+`options` No API-level configuration
+such as unknown-field
+handling and custom
+response objects.
+
+---
+
+The third argument is a single options object. You no longer need to
+pass separate positional arguments for custom valid and invalid
+responses.
+
+### Options
+
+```js
+{
+  unknownFields: "strip" | "allow" | "reject",
+
+  validPayloadResponse: {
+    statusCode: 200,
+    valid: true,
+  },
+
+  inValidPayloadResponse: {
+    statusCode: 400,
+    valid: false,
+    message: "One or more attribute values are invalid",
+  },
+}
+```
+
+All properties are optional.
+
+The defaults are equivalent to:
+
+```js
+{
+  unknownFields: "strip",
+
+  validPayloadResponse: {
+    statusCode: 200,
+    valid: true,
+  },
+
+  inValidPayloadResponse: {
+    statusCode: 400,
+    valid: false,
+    message: "One or more attribute values are invalid",
+  },
+}
+```
+
+Example:
+
+```js
+const result = perfectPayload(payload, validationRules, {
+  unknownFields: "reject",
+
+  validPayloadResponse: {
+    statusCode: 201,
+    valid: true,
+    message: "Payload accepted",
+  },
+
+  inValidPayloadResponse: {
+    statusCode: 422,
+    valid: false,
+    message: "Payload validation failed",
+  },
+});
+```
+
+The same options object is supported by `perfectPayloadAsync()`:
+
+```js
+const result = await perfectPayloadAsync(payload, validationRules, {
+  unknownFields: "reject",
+  inValidPayloadResponse: {
+    statusCode: 422,
+    valid: false,
+    message: "Payload validation failed",
+  },
+});
+```
+
+## Unknown Field Handling
+
+`unknownFields` controls what happens when the input payload contains a
+field that is not defined in the validation schema.
+
+Supported values:
+
+---
+
+Value Behavior
+
+---
+
+`"strip"` Removes unknown fields from
+`validatedPayload`. This is the
+default and preserves the existing
+behavior.
+
+`"allow"` Preserves unknown fields in
+`validatedPayload`.
+
+`"reject"` Rejects unknown fields with
+structured `UNKNOWN_FIELD`
+validation errors.
+
+---
+
+### `strip` --- default
+
+```js
+const payload = {
+  name: "Kiran",
+  role: "developer",
+};
+
+const rules = {
+  name: {
+    type: "string",
+  },
+};
+
+const result = perfectPayload(payload, rules);
+```
+
+Result:
+
+```js
+{
+  statusCode: 200,
+  valid: true,
+  validatedPayload: {
+    name: "Kiran"
+  }
+}
+```
+
+`role` is not part of the schema, so it is removed from
+`validatedPayload`.
+
+You can also set the default behavior explicitly:
+
+```js
+perfectPayload(payload, rules, {
+  unknownFields: "strip",
+});
+```
+
+### `allow` --- preserve unknown fields
+
+```js
+const result = perfectPayload(payload, rules, {
+  unknownFields: "allow",
+});
+```
+
+Result:
+
+```js
+{
+  statusCode: 200,
+  valid: true,
+  validatedPayload: {
+    name: "Kiran",
+    role: "developer"
+  }
+}
+```
+
+Schema-defined fields are still validated normally. Unknown fields are
+simply preserved.
+
+### `reject` --- reject unknown fields
+
+```js
+const result = perfectPayload(payload, rules, {
+  unknownFields: "reject",
+});
+```
+
+Result:
+
+```js
+{
+  statusCode: 400,
+  valid: false,
+  message: "One or more attribute values are invalid",
+  errors: [
+    {
+      path: "role",
+      code: "UNKNOWN_FIELD",
+      message: "Unknown field role is not allowed"
+    }
+  ]
+}
+```
+
+Unknown-field errors use the same structured error format as all other
+validation errors.
+
+### Nested objects
+
+Unknown-field handling is recursive for schemas using `objectAttr`.
+
+```js
+const payload = {
+  profile: {
+    city: "Bengaluru",
+    role: "developer",
+  },
+};
+
+const rules = {
+  profile: {
+    type: "object",
+    objectAttr: {
+      city: {
+        type: "string",
+      },
+    },
+  },
+};
+
+const result = perfectPayload(payload, rules, {
+  unknownFields: "reject",
+});
+```
+
+Returns:
+
+```js
+{
+  statusCode: 400,
+  valid: false,
+  message: "One or more attribute values are invalid",
+  errors: [
+    {
+      path: "profile.role",
+      code: "UNKNOWN_FIELD",
+      message: "Unknown field profile.role is not allowed"
+    }
+  ]
+}
+```
+
+### Arrays and deep paths
+
+`unknownFields` also applies recursively through `elementConstraints`.
+
+For an unknown field inside an array element, the error path includes
+the array index:
+
+```js
+{
+  path: "products[0].internalId",
+  code: "UNKNOWN_FIELD",
+  message: "Unknown field products[0].internalId is not allowed"
+}
+```
+
+This continues through deeply nested combinations of objects and arrays,
+for example:
+
+```text
+profile.teams[0].members[0].role
+```
+
+### Normal validation errors and unknown fields
+
+With `"reject"`, unknown-field errors can be returned together with
+normal validation errors.
+
+For example, an invalid email plus two unknown fields can produce:
+
+```js
+{
+  statusCode: 400,
+  valid: false,
+  message: "One or more attribute values are invalid",
+  errors: [
+    {
+      path: "email",
+      code: "INVALID_EMAIL",
+      message: "Invalid email format for attribute email"
+    },
+    {
+      path: "role",
+      code: "UNKNOWN_FIELD",
+      message: "Unknown field role is not allowed"
+    },
+    {
+      path: "active",
+      code: "UNKNOWN_FIELD",
+      message: "Unknown field active is not allowed"
+    }
+  ]
+}
+```
+
+With `"allow"`, unknown fields do not create validation errors. Normal
+schema validation continues unchanged.
+
+### Async behavior
+
+`perfectPayloadAsync()` supports the same `unknownFields` option:
+
+```js
+const result = await perfectPayloadAsync(payload, rules, {
+  unknownFields: "reject",
+});
+```
+
+Unknown-field checking is part of the synchronous validation phase. If
+`"reject"` finds an unknown field, asynchronous `customValidator`
+functions are not executed for that payload. This follows the normal
+two-phase contract of `perfectPayloadAsync()`.
+
+### Own properties only
+
+Unknown-field handling considers only the payload object's own
+enumerable properties. Enumerable properties inherited through the
+prototype chain are ignored.
+
+### Invalid option values
+
+Only these values are accepted:
+
+```text
+strip
+allow
+reject
+```
+
+Any other value throws a configuration error:
+
+```text
+perfect-payload:- unknownFields must be one of strip, allow, reject
+```
+
+This is a configuration error, not a payload validation error.
+
 ## Synchronous vs Asynchronous Validation
 
 For normal synchronous validation, use `perfectPayload()`:
@@ -190,7 +585,7 @@ For normal synchronous validation, use `perfectPayload()`:
 ```js
 import { perfectPayload } from "perfect-payload";
 
-const result = perfectPayload(payload, validationRules);
+const result = perfectPayload(payload, validationRules, options);
 ```
 
 When any `customValidator` needs to perform asynchronous work, use
@@ -199,15 +594,15 @@ When any `customValidator` needs to perform asynchronous work, use
 ```js
 import { perfectPayloadAsync } from "perfect-payload";
 
-const result = await perfectPayloadAsync(payload, validationRules);
+const result = await perfectPayloadAsync(payload, validationRules, options);
 ```
 
 The public APIs are:
 
 ```text
-perfectPayloadV1()       legacy API; deprecated
-perfectPayload()         synchronous validation
-perfectPayloadAsync()    synchronous + asynchronous customValidator
+perfectPayloadV1()                            legacy API; deprecated
+perfectPayload(data, rules, options?)         synchronous validation
+perfectPayloadAsync(data, rules, options?)    synchronous + asynchronous customValidator
 ```
 
 `perfectPayload()` remains synchronous and intentionally rejects a
@@ -246,10 +641,16 @@ March 31, 2027.
 
 Existing applications can continue using it during the migration period,
 
-but all new implementations should use:
+but all new implementations should use the current API:
 
 ```js
-perfectPayload();
+perfectPayload(data, validationRules, options?);
+```
+
+For asynchronous custom validation:
+
+```js
+await perfectPayloadAsync(data, validationRules, options?);
 ```
 
 The legacy API continues to return validation errors as:
@@ -1661,6 +2062,8 @@ MAX_VALUE
 OUT_OF_RANGE
 
 CUSTOM_VALIDATION_FAILED
+
+UNKNOWN_FIELD
 ```
 
 These codes are designed for programmatic handling while `message`
@@ -1939,157 +2342,156 @@ handling
 
 ## Custom Response Objects
 
-`perfectPayload()` allows you to customize both the valid and invalid
+Custom valid and invalid response objects are configured inside the
+optional third `options` argument.
 
-response objects.
+```js
+perfectPayload(data, validationRules, options?)
+await perfectPayloadAsync(data, validationRules, options?)
+```
 
-The third argument is the custom valid response.
-
-The fourth argument is the custom invalid response.
+This keeps API-level configuration in one place and avoids positional
+`undefined` arguments.
 
 ### Custom Valid Response
 
-Example:
-
 ```js
-const customValidResponse = {
-  statusCode: 201,
-
-  valid: true,
-
-  message: "Payload validated successfully",
-};
-
-const result = perfectPayload(payload, validationRules, customValidResponse);
+const result = perfectPayload(payload, validationRules, {
+  validPayloadResponse: {
+    statusCode: 201,
+    valid: true,
+    message: "Payload validated successfully",
+  },
+});
 ```
 
 When validation succeeds, `validatedPayload` is automatically added:
 
 ```js
-
 {
-
   statusCode: 201,
-
   valid: true,
-
   message: "Payload validated successfully",
-
   validatedPayload: {
-
     name: "Kiran",
-
     email: "kiran@example.com",
-
     age: 29
-
   }
-
 }
 ```
 
 ### Custom Invalid Response
 
-Example:
-
 ```js
-const customInvalidResponse = {
-  statusCode: 422,
-
-  valid: false,
-
-  message: "Payload validation failed",
-};
-
-const result = perfectPayload(
-  payload,
-
-  validationRules,
-
-  undefined,
-
-  customInvalidResponse,
-);
+const result = perfectPayload(payload, validationRules, {
+  inValidPayloadResponse: {
+    statusCode: 422,
+    valid: false,
+    message: "Payload validation failed",
+  },
+});
 ```
 
 When validation fails, `errors` is automatically added:
 
 ```js
-
 {
-
   statusCode: 422,
-
   valid: false,
-
   message: "Payload validation failed",
-
   errors: [
-
     {
-
       path: "email",
-
       code: "INVALID_EMAIL",
-
-      message:
-
-        "Invalid email format for attribute email"
-
+      message: "Invalid email format for attribute email"
     }
-
   ]
-
 }
 ```
 
 ### Custom Valid and Invalid Responses Together
 
 ```js
-const customValidResponse = {
-  statusCode: 201,
+const result = perfectPayload(payload, validationRules, {
+  validPayloadResponse: {
+    statusCode: 201,
+    valid: true,
+    message: "CUSTOM_VALID_RESPONSE",
+  },
 
-  valid: true,
-
-  message: "CUSTOM_VALID_RESPONSE",
-};
-
-const customInvalidResponse = {
-  statusCode: 422,
-
-  valid: false,
-
-  message: "CUSTOM_INVALID_RESPONSE",
-};
-
-const result = perfectPayload(
-  payload,
-
-  validationRules,
-
-  customValidResponse,
-
-  customInvalidResponse,
-);
+  inValidPayloadResponse: {
+    statusCode: 422,
+    valid: false,
+    message: "CUSTOM_INVALID_RESPONSE",
+  },
+});
 ```
 
-The response object you provide is preserved, while `perfectPayload()`
+You can combine response customization with other API options:
 
-automatically adds either:
+```js
+const result = perfectPayload(payload, validationRules, {
+  unknownFields: "reject",
 
-```text
+  validPayloadResponse: {
+    statusCode: 201,
+    valid: true,
+  },
 
-validatedPayload
+  inValidPayloadResponse: {
+    statusCode: 422,
+    valid: false,
+    message: "Payload validation failed",
+  },
+});
 ```
 
-for successful validation, or:
+The response object you provide is preserved while `perfectPayload()`
+automatically adds `validatedPayload` for successful validation or
+`errors` for failed validation.
 
-```text
+The same response options are supported by `perfectPayloadAsync()`.
 
-errors
+## v1.7 API Migration
+
+The current `perfectPayload()` and `perfectPayloadAsync()` APIs use one
+optional third argument for configuration:
+
+```js
+perfectPayload(data, validationRules, options?)
+perfectPayloadAsync(data, validationRules, options?)
 ```
 
-for failed validation.
+Custom response objects now belong inside `options`.
+
+Use:
+
+```js
+perfectPayload(payload, rules, {
+  validPayloadResponse: customValidResponse,
+  inValidPayloadResponse: customInvalidResponse,
+});
+```
+
+instead of passing custom response objects as separate positional
+arguments.
+
+This also makes it possible to combine response customization with
+`unknownFields` without placeholder arguments:
+
+```js
+perfectPayload(payload, rules, {
+  unknownFields: "reject",
+  inValidPayloadResponse: {
+    statusCode: 422,
+    valid: false,
+    message: "Payload validation failed",
+  },
+});
+```
+
+`perfectPayloadV1()` is unchanged and retains its legacy signature
+during its deprecation period.
 
 ## Default Responses
 

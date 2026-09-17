@@ -522,31 +522,66 @@ export function perfectPayloadV1(
 export function perfectPayload(
   data = {},
   dataValidationRule = {},
-  validPayloadResponse = { statusCode: 200, valid: true },
-  inValidPayloadResponse = {
-    statusCode: 400,
-    valid: false,
-    message: "One or more attribute values are invalid",
-  },
+  options = {},
 ) {
+  const {
+    unknownFields = "strip",
+
+    validPayloadResponse = {
+      statusCode: 200,
+      valid: true,
+    },
+
+    inValidPayloadResponse = {
+      statusCode: 400,
+      valid: false,
+      message: "One or more attribute values are invalid",
+    },
+  } = options ?? {};
+
+  if (!["strip", "allow", "reject"].includes(unknownFields)) {
+    throw new Error(
+      `perfect-payload:- unknownFields must be one of strip, allow, reject`,
+    );
+  }
+
   return perfectPayloadStructured(
     data,
     dataValidationRule,
     validPayloadResponse,
     inValidPayloadResponse,
+    "",
+    {
+      unknownFields,
+    },
   );
 }
 
 export async function perfectPayloadAsync(
   data = {},
   dataValidationRule = {},
-  validPayloadResponse = { statusCode: 200, valid: true },
-  inValidPayloadResponse = {
-    statusCode: 400,
-    valid: false,
-    message: "One or more attribute values are invalid",
-  },
+  options = {},
 ) {
+  const {
+    validPayloadResponse = {
+      statusCode: 200,
+      valid: true,
+    },
+
+    inValidPayloadResponse = {
+      statusCode: 400,
+      valid: false,
+      message: "One or more attribute values are invalid",
+    },
+    unknownFields = "strip",
+  } = options ?? {};
+
+  if (!["strip", "allow", "reject"].includes(unknownFields)) {
+    throw new Error(
+      `perfect-payload:- unknownFields must be one of strip, allow, reject`,
+    );
+  }
+
   const validationResult = perfectPayloadStructured(
     data,
     dataValidationRule,
@@ -555,6 +590,7 @@ export async function perfectPayloadAsync(
     "",
     {
       skipCustomValidator: true,
+      unknownFields,
     },
   );
 
@@ -566,6 +602,7 @@ export async function perfectPayloadAsync(
     validationResult?.validatedPayload ?? {},
     dataValidationRule,
   );
+
   if (rowErrors.length > 0) {
     return {
       ...inValidPayloadResponse,
@@ -591,6 +628,7 @@ function perfectPayloadStructured(
   let validatedPayload = {};
   let rowErrors = [];
   const skipCustomValidator = options?.skipCustomValidator === true;
+  const unknownFields = options?.unknownFields ?? "strip";
 
   for (const attributeName in dataValidationRule) {
     let addNextError = true;
@@ -1520,6 +1558,36 @@ function perfectPayloadStructured(
     }
   }
 
+  // UNKNOWN FIELD HANDLING
+  if (unknownFields === "allow") {
+    for (const attributeName in data) {
+      if (
+        Object.prototype.hasOwnProperty.call(data, attributeName) &&
+        !Object.prototype.hasOwnProperty.call(dataValidationRule, attributeName)
+      ) {
+        validatedPayload[attributeName] = data[attributeName];
+      }
+    }
+  }
+
+  if (unknownFields === "reject") {
+    for (const attributeName in data) {
+      if (
+        Object.prototype.hasOwnProperty.call(data, attributeName) &&
+        !Object.prototype.hasOwnProperty.call(dataValidationRule, attributeName)
+      ) {
+        const path = basePath ? `${basePath}.${attributeName}` : attributeName;
+
+        rowErrors.push({
+          path,
+          code: "UNKNOWN_FIELD",
+          message: `Unknown field ${path} is not allowed`,
+        });
+      }
+    }
+  }
+
+  // INVALID RESPONSE
   if (rowErrors.length > 0) {
     return {
       ...inValidPayloadResponse,
@@ -1527,6 +1595,7 @@ function perfectPayloadStructured(
     };
   }
 
+  // VALID RESPONSE
   return {
     ...validPayloadResponse,
     validatedPayload,
