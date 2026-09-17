@@ -873,6 +873,9 @@ function perfectPayloadStructured(
                     elementError = {
                       ...firstElementError,
                       path: indexedPath,
+                      ...(firstElementError.code === "UNKNOWN_FIELD" && {
+                        message: `Unknown field ${indexedPath} is not allowed`,
+                      }),
                     };
                   }
 
