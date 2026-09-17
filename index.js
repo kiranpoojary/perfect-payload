@@ -537,6 +537,45 @@ export function perfectPayload(
   );
 }
 
+export async function perfectPayloadAsync(
+  data = {},
+  dataValidationRule = {},
+  validPayloadResponse = { statusCode: 200, valid: true },
+  inValidPayloadResponse = {
+    statusCode: 400,
+    valid: false,
+    message: "One or more attribute values are invalid",
+  },
+) {
+  const validationResult = perfectPayloadStructured(
+    data,
+    dataValidationRule,
+    validPayloadResponse,
+    inValidPayloadResponse,
+    "",
+    {
+      skipCustomValidator: true,
+    },
+  );
+
+  if (validationResult?.errors?.length) {
+    return validationResult;
+  }
+
+  const rowErrors = await runAsyncCustomValidators(
+    validationResult?.validatedPayload ?? {},
+    dataValidationRule,
+  );
+  if (rowErrors.length > 0) {
+    return {
+      ...inValidPayloadResponse,
+      errors: rowErrors,
+    };
+  }
+
+  return validationResult;
+}
+
 function perfectPayloadStructured(
   data = {},
   dataValidationRule = {},
@@ -547,9 +586,11 @@ function perfectPayloadStructured(
     message: "One or more attribute values are invalid",
   },
   basePath = "",
+  options = {},
 ) {
   let validatedPayload = {};
   let rowErrors = [];
+  const skipCustomValidator = options?.skipCustomValidator === true;
 
   for (const attributeName in dataValidationRule) {
     let addNextError = true;
@@ -765,6 +806,14 @@ function perfectPayloadStructured(
                   {
                     [attributeName]: attributeRules[ruleName],
                   },
+                  { statusCode: 200, valid: true },
+                  {
+                    statusCode: 400,
+                    valid: false,
+                    message: "One or more attribute values are invalid",
+                  },
+                  "",
+                  options,
                 );
 
                 if (errors.length > 0) {
@@ -808,7 +857,6 @@ function perfectPayloadStructured(
           }
 
           break;
-
         case "minItems":
           if (
             addNextError &&
@@ -1331,16 +1379,14 @@ function perfectPayloadStructured(
               perfectPayloadStructured(
                 attributeValue,
                 attributeRules?.[ruleName],
-                {
-                  statusCode: 200,
-                  valid: true,
-                },
+                { statusCode: 200, valid: true },
                 {
                   statusCode: 400,
                   valid: false,
                   message: "One or more attribute values are invalid",
                 },
                 attributePath,
+                options,
               );
 
             if (errors.length === 0) {
@@ -1415,7 +1461,12 @@ function perfectPayloadStructured(
         // ==================================================
 
         case "customValidator":
-          if (addNextError && attrExist && attributeValue !== null) {
+          if (
+            !skipCustomValidator &&
+            addNextError &&
+            attrExist &&
+            attributeValue !== null
+          ) {
             const validator = attributeRules?.[ruleName];
 
             if (typeof validator !== "function") {
@@ -1597,4 +1648,119 @@ function isObjectId(id) {
 
 function isPassedRegex(reExpression, value) {
   return reExpression.test(value);
+}
+
+async function runAsyncCustomValidators(
+  data = {},
+  dataValidationRule = {},
+  basePath = "",
+) {
+  const errors = [];
+
+  for (const attributeName in dataValidationRule) {
+    const attributeRules = dataValidationRule?.[attributeName];
+
+    const attrExist = Object.keys(data ?? {}).includes(attributeName);
+
+    if (!attrExist) {
+      continue;
+    }
+
+    const attributeValue = data?.[attributeName];
+
+    const attributePath = getAttributePath(
+      attributeName,
+      attributeRules,
+      basePath,
+    );
+
+    // customValidator
+    if (
+      Object.prototype.hasOwnProperty.call(
+        attributeRules ?? {},
+        "customValidator",
+      )
+    ) {
+      if (typeof attributeRules.customValidator !== "function") {
+        throw new Error(
+          `perfect-payload:- customValidator must be a function for attribute ${attributePath}`,
+        );
+      }
+
+      if (attributeValue !== null) {
+        const validationResponse = await attributeRules.customValidator(
+          attributeValue,
+          data,
+        );
+
+        if (validationResponse !== true) {
+          addStructuredError(
+            errors,
+            attributePath,
+            attributeRules?.customValidatorCode || "CUSTOM_VALIDATION_FAILED",
+            attributeRules?.customValidatorError ||
+              `Custom validation failed for attribute ${attributePath}`,
+          );
+        }
+      }
+    }
+
+    // nested objectAttr
+    if (
+      attributeValue !== null &&
+      typeof attributeValue === "object" &&
+      !Array.isArray(attributeValue) &&
+      attributeRules?.objectAttr
+    ) {
+      const nestedErrors = await runAsyncCustomValidators(
+        attributeValue,
+        attributeRules.objectAttr,
+        attributePath,
+      );
+
+      errors.push(...nestedErrors);
+    }
+
+    // nested elementConstraints
+    if (Array.isArray(attributeValue) && attributeRules?.elementConstraints) {
+      for (
+        let elementIndex = 0;
+        elementIndex < attributeValue.length;
+        elementIndex++
+      ) {
+        const element = attributeValue[elementIndex];
+
+        const elementErrors = await runAsyncCustomValidators(
+          {
+            [attributeName]: element,
+          },
+          {
+            [attributeName]: attributeRules.elementConstraints,
+          },
+        );
+
+        for (const elementError of elementErrors) {
+          const indexedPath = replaceRootPath(
+            elementError.path,
+            attributeName,
+            `${attributePath}[${elementIndex}]`,
+          );
+
+          errors.push({
+            ...elementError,
+            path: indexedPath,
+
+            message:
+              elementError.code === "CUSTOM_VALIDATION_FAILED" &&
+              elementError.message ===
+                `Custom validation failed for attribute ${elementError.path}`
+                ? `Custom validation failed for attribute ${indexedPath}`
+                : elementError.message,
+          });
+        }
+      }
+    }
+  }
+
+  return errors;
 }
