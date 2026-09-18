@@ -562,7 +562,7 @@ function perfectPayloadStructured(
       basePath,
     );
 
-    const attributeValue = data?.[attributeName] ?? null;
+    let attributeValue = data?.[attributeName] ?? null;
 
     const nullAllowed =
       dataValidationRule?.[attributeName]?.["allowNull"] ?? true;
@@ -570,7 +570,72 @@ function perfectPayloadStructured(
     const isMandatoryField = attributeRules?.["mandatory"] ?? false;
 
     const attrExist = Object.keys(data ?? {}).includes(attributeName);
+    // TRANSFORMATIONS START
+    // NO MULTI TRANSFORMATION
+    if (
+      attributeRules?.lowercase === true &&
+      attributeRules?.uppercase === true
+    ) {
+      throw new Error(
+        `perfect-payload:- lowercase and uppercase cannot both be enabled for attribute ${attributePath}`,
+      );
+    }
+    // TRIM
+    if (
+      attrExist &&
+      attributeValue !== null &&
+      attributeRules?.trim === true &&
+      typeof attributeValue === "string"
+    ) {
+      attributeValue = attributeValue.trim();
+    }
+    // LOWERCASE
+    if (
+      attrExist &&
+      attributeValue !== null &&
+      attributeRules?.lowercase === true &&
+      typeof attributeValue === "string"
+    ) {
+      attributeValue = attributeValue.toLowerCase();
+    }
 
+    // UPPERCASE
+
+    if (
+      attrExist &&
+      attributeValue !== null &&
+      attributeRules?.uppercase === true &&
+      typeof attributeValue === "string"
+    ) {
+      attributeValue = attributeValue.toUpperCase();
+    }
+
+    // CUSTOM TRANSFORM
+
+    if (
+      attrExist &&
+      attributeValue !== null &&
+      attributeRules?.transform !== undefined
+    ) {
+      const transformer = attributeRules.transform;
+
+      if (typeof transformer !== "function") {
+        throw new Error(
+          `perfect-payload:- transform must be a function for attribute ${attributePath}`,
+        );
+      }
+
+      const transformedValue = transformer(attributeValue, data);
+
+      if (transformedValue && typeof transformedValue.then === "function") {
+        throw new Error(
+          `perfect-payload:- transform must be synchronous for attribute ${attributePath}`,
+        );
+      }
+
+      attributeValue = transformedValue;
+    }
+    // TRANSFORMATIONS END
     for (const ruleName in attributeRules) {
       switch (ruleName) {
         // ==================================================
@@ -674,6 +739,9 @@ function perfectPayloadStructured(
             if (isArray(attributeValue) && attributeValue.length > 0) {
               let elementError = null;
 
+              // Clone so original payload array is not mutated
+              const transformedArray = [...attributeValue];
+
               for (
                 let elementIndex = 0;
                 elementIndex < attributeValue.length;
@@ -681,7 +749,10 @@ function perfectPayloadStructured(
               ) {
                 const element = attributeValue[elementIndex];
 
-                const { errors = [] } = perfectPayloadStructured(
+                const {
+                  errors = [],
+                  validatedPayload: elementValidatedPayload,
+                } = perfectPayloadStructured(
                   {
                     [attributeName]: element,
                   },
@@ -714,11 +785,18 @@ function perfectPayloadStructured(
 
                   break;
                 }
+
+                // Preserve the transformed element
+                transformedArray[elementIndex] =
+                  elementValidatedPayload?.[attributeName];
               }
 
               if (elementError) {
                 rowErrors.push(elementError);
                 addNextError = false;
+              } else {
+                // All elements passed, so use transformed values
+                attributeValue = transformedArray;
               }
             }
           }
@@ -1200,24 +1278,29 @@ function perfectPayloadStructured(
         // ==================================================
         // NESTED OBJECT
         // ==================================================
-
         case "objectAttr":
           if (addNextError) {
-            const { errors = [] } = perfectPayloadStructured(
-              attributeValue,
-              attributeRules[ruleName],
-              { statusCode: 200, valid: true },
-              {
-                statusCode: 400,
-                valid: false,
-                message: "One or more attribute values are invalid",
-              },
-              attributePath,
-            );
+            const { errors = [], validatedPayload: nestedValidatedPayload } =
+              perfectPayloadStructured(
+                attributeValue,
+                attributeRules?.[ruleName],
+                {
+                  statusCode: 200,
+                  valid: true,
+                },
+                {
+                  statusCode: 400,
+                  valid: false,
+                  message: "One or more attribute values are invalid",
+                },
+                attributePath,
+              );
+
+            if (errors.length === 0) {
+              attributeValue = nestedValidatedPayload;
+            }
 
             rowErrors = [...rowErrors, ...errors];
-
-            addNextError = true;
           }
 
           break;
