@@ -4,11 +4,19 @@
   "type": "module",
   "description": "Lightweight JSON payload validation library with structured errors, nested validation, field paths, and customizable validation rules.",
   "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./express": "./express.js",
+    "./fastify": "./fastify.js"
+  },
   "scripts": {
     "test": "jest"
   },
   "files": [
-    "index.js"
+    "index.js",
+    "framework.js",
+    "express.js",
+    "fastify.js"
   ],
   "jest": {
     "testPathIgnorePatterns": [
