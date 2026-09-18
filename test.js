@@ -1,4 +1,17 @@
 import { perfectPayload, perfectPayloadAsync } from "./index.js";
+import {
+  validateFrameworkConfig,
+  validateFrameworkSources,
+  validateFrameworkSourcesAsync,
+} from "./framework.js";
+import {
+  validatePayload as validateExpressPayload,
+  validatePayloadAsync as validateExpressPayloadAsync,
+} from "./express.js";
+import {
+  validatePayload as validateFastifyPayload,
+  validatePayloadAsync as validateFastifyPayloadAsync,
+} from "./fastify.js";
 /*
 |--------------------------------------------------------------------------
 | perfect-payload v1.2.0 regression test
@@ -4845,6 +4858,2882 @@ check(
       "CUSTOM_VALIDATION_FAILED",
 );
 
+// ==================================================
+// v1.8.0 - prettyErrors
+// ==================================================
+
+// --------------------------------------------------
+// 1. SYNC - DEFAULT prettyErrors:false
+// --------------------------------------------------
+
+const prettyErrorsSyncDefaultResult = perfectPayload(
+  {
+    email: "invalid-email",
+    age: 15,
+  },
+  {
+    email: {
+      mandatory: true,
+      type: "email",
+    },
+    age: {
+      mandatory: true,
+      type: "number",
+      min: 18,
+    },
+  },
+);
+
+check(
+  "v1.8 prettyErrors sync defaults to structured errors",
+  prettyErrorsSyncDefaultResult.valid === false &&
+    prettyErrorsSyncDefaultResult.errors?.length === 2 &&
+    typeof prettyErrorsSyncDefaultResult.errors?.[0] === "object" &&
+    prettyErrorsSyncDefaultResult.errors?.[0]?.path === "email" &&
+    prettyErrorsSyncDefaultResult.errors?.[0]?.code === "INVALID_EMAIL" &&
+    prettyErrorsSyncDefaultResult.errors?.[1]?.path === "age" &&
+    prettyErrorsSyncDefaultResult.errors?.[1]?.code === "MIN_VALUE",
+);
+
+// --------------------------------------------------
+// 2. SYNC - prettyErrors:true
+// --------------------------------------------------
+
+const prettyErrorsSyncResult = perfectPayload(
+  {
+    email: "invalid-email",
+    age: 15,
+  },
+  {
+    email: {
+      mandatory: true,
+      type: "email",
+    },
+    age: {
+      mandatory: true,
+      type: "number",
+      min: 18,
+    },
+  },
+  {
+    prettyErrors: true,
+  },
+);
+
+check(
+  "v1.8 prettyErrors sync returns message strings",
+  prettyErrorsSyncResult.valid === false &&
+    prettyErrorsSyncResult.errors?.length === 2 &&
+    prettyErrorsSyncResult.errors?.every(
+      (error) => typeof error === "string",
+    ) &&
+    prettyErrorsSyncResult.errors?.[0] ===
+      "Invalid email format for attribute email" &&
+    prettyErrorsSyncResult.errors?.[1] ===
+      "Minimum value 18 is allowed in attribute age",
+);
+
+// --------------------------------------------------
+// 3. SYNC - prettyErrors:true + custom error
+// --------------------------------------------------
+
+const prettyErrorsCustomMessageResult = perfectPayload(
+  {
+    email: "invalid-email",
+  },
+  {
+    email: {
+      type: "email",
+      typeError: "Please provide a valid email address",
+    },
+  },
+  {
+    prettyErrors: true,
+  },
+);
+
+check(
+  "v1.8 prettyErrors preserves custom error messages",
+  prettyErrorsCustomMessageResult.valid === false &&
+    prettyErrorsCustomMessageResult.errors?.length === 1 &&
+    prettyErrorsCustomMessageResult.errors?.[0] ===
+      "Please provide a valid email address",
+);
+
+// --------------------------------------------------
+// 4. SYNC - SUCCESS SHOULD NOT CREATE errors
+// --------------------------------------------------
+
+const prettyErrorsSyncSuccessResult = perfectPayload(
+  {
+    email: "user@example.com",
+  },
+  {
+    email: {
+      mandatory: true,
+      type: "email",
+    },
+  },
+  {
+    prettyErrors: true,
+  },
+);
+
+check(
+  "v1.8 prettyErrors does not affect successful sync validation",
+  prettyErrorsSyncSuccessResult.valid === true &&
+    prettyErrorsSyncSuccessResult.validatedPayload?.email ===
+      "user@example.com" &&
+    prettyErrorsSyncSuccessResult.errors === undefined,
+);
+
+// --------------------------------------------------
+// 5. SYNC - INVALID prettyErrors CONFIG
+// --------------------------------------------------
+
+let prettyErrorsSyncConfigError = null;
+
+try {
+  perfectPayload(
+    {},
+    {},
+    {
+      prettyErrors: "true",
+    },
+  );
+} catch (error) {
+  prettyErrorsSyncConfigError = error;
+}
+
+check(
+  "v1.8 prettyErrors sync rejects non-boolean option",
+  prettyErrorsSyncConfigError?.message ===
+    "perfect-payload:- prettyErrors must be a boolean",
+);
+
+// --------------------------------------------------
+// 6. ASYNC - SYNC VALIDATION FAILURE + prettyErrors:true
+// --------------------------------------------------
+
+const prettyErrorsAsyncSyncFailureResult = await perfectPayloadAsync(
+  {
+    email: "invalid-email",
+  },
+  {
+    email: {
+      mandatory: true,
+      type: "email",
+    },
+  },
+  {
+    prettyErrors: true,
+  },
+);
+
+check(
+  "v1.8 prettyErrors async formats synchronous validation errors",
+  prettyErrorsAsyncSyncFailureResult.valid === false &&
+    prettyErrorsAsyncSyncFailureResult.errors?.length === 1 &&
+    prettyErrorsAsyncSyncFailureResult.errors?.[0] ===
+      "Invalid email format for attribute email",
+);
+
+// --------------------------------------------------
+// 7. ASYNC - ASYNC customValidator FAILURE
+// --------------------------------------------------
+
+const prettyErrorsAsyncValidatorResult = await perfectPayloadAsync(
+  {
+    username: "taken-user",
+  },
+  {
+    username: {
+      mandatory: true,
+      type: "string",
+      customValidator: async () => false,
+      customValidatorError: "Username is already taken",
+    },
+  },
+  {
+    prettyErrors: true,
+  },
+);
+
+check(
+  "v1.8 prettyErrors async formats async customValidator errors",
+  prettyErrorsAsyncValidatorResult.valid === false &&
+    prettyErrorsAsyncValidatorResult.errors?.length === 1 &&
+    prettyErrorsAsyncValidatorResult.errors?.[0] ===
+      "Username is already taken",
+);
+
+// --------------------------------------------------
+// 8. ASYNC - DEFAULT REMAINS STRUCTURED
+// --------------------------------------------------
+
+const prettyErrorsAsyncDefaultResult = await perfectPayloadAsync(
+  {
+    username: "taken-user",
+  },
+  {
+    username: {
+      mandatory: true,
+      type: "string",
+      customValidator: async () => false,
+    },
+  },
+);
+
+check(
+  "v1.8 prettyErrors async defaults to structured errors",
+  prettyErrorsAsyncDefaultResult.valid === false &&
+    prettyErrorsAsyncDefaultResult.errors?.length === 1 &&
+    typeof prettyErrorsAsyncDefaultResult.errors?.[0] === "object" &&
+    prettyErrorsAsyncDefaultResult.errors?.[0]?.path === "username" &&
+    prettyErrorsAsyncDefaultResult.errors?.[0]?.code ===
+      "CUSTOM_VALIDATION_FAILED",
+);
+
+// --------------------------------------------------
+// 9. ASYNC - INVALID prettyErrors CONFIG
+// --------------------------------------------------
+
+let prettyErrorsAsyncConfigError = null;
+
+try {
+  await perfectPayloadAsync(
+    {},
+    {},
+    {
+      prettyErrors: 1,
+    },
+  );
+} catch (error) {
+  prettyErrorsAsyncConfigError = error;
+}
+
+check(
+  "v1.8 prettyErrors async rejects non-boolean option",
+  prettyErrorsAsyncConfigError?.message ===
+    "perfect-payload:- prettyErrors must be a boolean",
+);
+
+// --------------------------------------------------
+// 10. UNKNOWN FIELD + prettyErrors:true
+// --------------------------------------------------
+
+const prettyErrorsUnknownFieldResult = perfectPayload(
+  {
+    name: "Kiran",
+    internalId: "SECRET-123",
+  },
+  {
+    name: {
+      type: "string",
+    },
+  },
+  {
+    unknownFields: "reject",
+    prettyErrors: true,
+  },
+);
+
+check(
+  "v1.8 prettyErrors works with unknownFields reject",
+  prettyErrorsUnknownFieldResult.valid === false &&
+    prettyErrorsUnknownFieldResult.errors?.length === 1 &&
+    prettyErrorsUnknownFieldResult.errors?.[0] ===
+      "Unknown field internalId is not allowed",
+);
+
+// ==================================================
+// v1.8.0 - FRAMEWORK CONFIGURATION
+// ==================================================
+
+// --------------------------------------------------
+// 1. BODY ONLY
+// --------------------------------------------------
+
+const bodyOnlySources = validateFrameworkConfig({
+  rule: {
+    body: {
+      email: {
+        type: "email",
+      },
+    },
+  },
+});
+
+check(
+  "v1.8 framework config supports body source",
+  JSON.stringify(bodyOnlySources) === JSON.stringify(["body"]),
+);
+
+// --------------------------------------------------
+// 2. ALL SOURCES - STANDARD ORDER
+// Consumer intentionally provides a different order.
+// --------------------------------------------------
+
+const allSources = validateFrameworkConfig({
+  rule: {
+    body: {
+      name: {
+        type: "string",
+      },
+    },
+    query: {
+      page: {
+        type: "number",
+      },
+    },
+    headers: {
+      authorization: {
+        type: "string",
+      },
+    },
+    params: {
+      userId: {
+        type: "string",
+      },
+    },
+  },
+});
+
+check(
+  "v1.8 framework config returns sources in standard order",
+  JSON.stringify(allSources) ===
+    JSON.stringify(["headers", "params", "query", "body"]),
+);
+
+// --------------------------------------------------
+// 3. PARTIAL SOURCES - STANDARD ORDER
+// --------------------------------------------------
+
+const partialSources = validateFrameworkConfig({
+  rule: {
+    body: {
+      name: {
+        type: "string",
+      },
+    },
+    headers: {
+      authorization: {
+        type: "string",
+      },
+    },
+  },
+});
+
+check(
+  "v1.8 framework config preserves standard order for partial sources",
+  JSON.stringify(partialSources) === JSON.stringify(["headers", "body"]),
+);
+
+// --------------------------------------------------
+// 4. MISSING RULE
+// --------------------------------------------------
+
+let missingRuleError = null;
+
+try {
+  validateFrameworkConfig();
+} catch (error) {
+  missingRuleError = error;
+}
+
+check(
+  "v1.8 framework config rejects missing rule",
+  missingRuleError?.message ===
+    "perfect-payload:- framework rule must be an object",
+);
+
+// --------------------------------------------------
+// 5. NULL RULE
+// --------------------------------------------------
+
+let nullRuleError = null;
+
+try {
+  validateFrameworkConfig({
+    rule: null,
+  });
+} catch (error) {
+  nullRuleError = error;
+}
+
+check(
+  "v1.8 framework config rejects null rule",
+  nullRuleError?.message ===
+    "perfect-payload:- framework rule must be an object",
+);
+
+// --------------------------------------------------
+// 6. ARRAY RULE
+// --------------------------------------------------
+
+let arrayRuleError = null;
+
+try {
+  validateFrameworkConfig({
+    rule: [],
+  });
+} catch (error) {
+  arrayRuleError = error;
+}
+
+check(
+  "v1.8 framework config rejects array rule",
+  arrayRuleError?.message ===
+    "perfect-payload:- framework rule must be an object",
+);
+
+// --------------------------------------------------
+// 7. EMPTY RULE
+// --------------------------------------------------
+
+let emptyRuleError = null;
+
+try {
+  validateFrameworkConfig({
+    rule: {},
+  });
+} catch (error) {
+  emptyRuleError = error;
+}
+
+check(
+  "v1.8 framework config rejects empty rule",
+  emptyRuleError?.message ===
+    "perfect-payload:- framework rule must contain at least one request source",
+);
+
+// --------------------------------------------------
+// 8. UNSUPPORTED SOURCE
+// --------------------------------------------------
+
+let unsupportedSourceError = null;
+
+try {
+  validateFrameworkConfig({
+    rule: {
+      cookies: {
+        sessionId: {
+          type: "string",
+        },
+      },
+    },
+  });
+} catch (error) {
+  unsupportedSourceError = error;
+}
+
+check(
+  "v1.8 framework config rejects unsupported request source",
+  unsupportedSourceError?.message ===
+    "perfect-payload:- unsupported request source cookies",
+);
+
+// --------------------------------------------------
+// 9. INVALID SOURCE RULE - NULL
+// --------------------------------------------------
+
+let nullSourceRuleError = null;
+
+try {
+  validateFrameworkConfig({
+    rule: {
+      body: null,
+    },
+  });
+} catch (error) {
+  nullSourceRuleError = error;
+}
+
+check(
+  "v1.8 framework config rejects null source rule",
+  nullSourceRuleError?.message ===
+    "perfect-payload:- rule for request source body must be an object",
+);
+
+// --------------------------------------------------
+// 10. INVALID SOURCE RULE - ARRAY
+// --------------------------------------------------
+
+let arraySourceRuleError = null;
+
+try {
+  validateFrameworkConfig({
+    rule: {
+      query: [],
+    },
+  });
+} catch (error) {
+  arraySourceRuleError = error;
+}
+
+check(
+  "v1.8 framework config rejects array source rule",
+  arraySourceRuleError?.message ===
+    "perfect-payload:- rule for request source query must be an object",
+);
+
+// --------------------------------------------------
+// 11. INVALID OPTIONS
+// --------------------------------------------------
+
+let invalidOptionsError = null;
+
+try {
+  validateFrameworkConfig({
+    rule: {
+      body: {
+        name: {
+          type: "string",
+        },
+      },
+    },
+    options: "invalid",
+  });
+} catch (error) {
+  invalidOptionsError = error;
+}
+
+check(
+  "v1.8 framework config rejects non-object options",
+  invalidOptionsError?.message ===
+    "perfect-payload:- framework options must be an object",
+);
+
+// --------------------------------------------------
+// 12. VALID OPTIONS
+// --------------------------------------------------
+
+const validOptionsSources = validateFrameworkConfig({
+  rule: {
+    params: {
+      id: {
+        type: "string",
+      },
+    },
+  },
+  options: {
+    unknownFields: "reject",
+    prettyErrors: true,
+  },
+});
+
+check(
+  "v1.8 framework config accepts core options",
+  JSON.stringify(validOptionsSources) === JSON.stringify(["params"]),
+);
+
+// ==================================================
+// v1.8.0 - FRAMEWORK SYNC SOURCE AGGREGATION
+// ==================================================
+
+// --------------------------------------------------
+// 1. BODY ONLY - SUCCESS
+// --------------------------------------------------
+
+const frameworkBodySuccess = validateFrameworkSources({
+  data: {
+    body: {
+      name: "Kiran",
+      email: "kiran@example.com",
+    },
+  },
+  rule: {
+    body: {
+      name: {
+        mandatory: true,
+        type: "string",
+      },
+      email: {
+        mandatory: true,
+        type: "email",
+      },
+    },
+  },
+});
+
+check(
+  "v1.8 framework sync validates body source",
+  frameworkBodySuccess.valid === true &&
+    frameworkBodySuccess.validatedPayload?.body?.name === "Kiran" &&
+    frameworkBodySuccess.validatedPayload?.body?.email ===
+      "kiran@example.com" &&
+    Object.keys(frameworkBodySuccess.validatedPayload).length === 1,
+);
+
+// --------------------------------------------------
+// 2. MULTIPLE SOURCES - SUCCESS
+// --------------------------------------------------
+
+const frameworkMultipleSuccess = validateFrameworkSources({
+  data: {
+    headers: {
+      authorization: "Bearer token",
+    },
+    params: {
+      userId: "123",
+    },
+    query: {
+      search: "phone",
+    },
+    body: {
+      name: "Kiran",
+    },
+  },
+  rule: {
+    body: {
+      name: {
+        type: "string",
+      },
+    },
+    query: {
+      search: {
+        type: "string",
+      },
+    },
+    params: {
+      userId: {
+        type: "string",
+      },
+    },
+    headers: {
+      authorization: {
+        type: "string",
+      },
+    },
+  },
+});
+
+check(
+  "v1.8 framework sync validates multiple sources",
+  frameworkMultipleSuccess.valid === true &&
+    frameworkMultipleSuccess.validatedPayload?.headers?.authorization ===
+      "Bearer token" &&
+    frameworkMultipleSuccess.validatedPayload?.params?.userId === "123" &&
+    frameworkMultipleSuccess.validatedPayload?.query?.search === "phone" &&
+    frameworkMultipleSuccess.validatedPayload?.body?.name === "Kiran",
+);
+
+check(
+  "v1.8 framework sync returns validated sources in standard order",
+  JSON.stringify(Object.keys(frameworkMultipleSuccess.validatedPayload)) ===
+    JSON.stringify(["headers", "params", "query", "body"]),
+);
+
+// --------------------------------------------------
+// 3. MULTIPLE SOURCES - AGGREGATE ERRORS
+// --------------------------------------------------
+
+const frameworkMultipleErrors = validateFrameworkSources({
+  data: {
+    headers: {},
+    params: {
+      userId: 123,
+    },
+    query: {
+      page: "invalid",
+    },
+    body: {
+      email: "invalid-email",
+    },
+  },
+  rule: {
+    body: {
+      email: {
+        mandatory: true,
+        type: "email",
+      },
+    },
+    query: {
+      page: {
+        mandatory: true,
+        type: "number",
+      },
+    },
+    params: {
+      userId: {
+        mandatory: true,
+        type: "string",
+      },
+    },
+    headers: {
+      authorization: {
+        mandatory: true,
+        type: "string",
+      },
+    },
+  },
+});
+
+check(
+  "v1.8 framework sync aggregates errors from all configured sources",
+  frameworkMultipleErrors.valid === false &&
+    frameworkMultipleErrors.errors?.length === 4,
+);
+
+check(
+  "v1.8 framework sync prefixes structured error paths with source",
+  frameworkMultipleErrors.errors?.[0]?.path === "headers.authorization" &&
+    frameworkMultipleErrors.errors?.[1]?.path === "params.userId" &&
+    frameworkMultipleErrors.errors?.[2]?.path === "query.page" &&
+    frameworkMultipleErrors.errors?.[3]?.path === "body.email",
+);
+
+check(
+  "v1.8 framework sync preserves deterministic error order",
+  frameworkMultipleErrors.errors?.[0]?.code === "REQUIRED" &&
+    frameworkMultipleErrors.errors?.[1]?.code === "INVALID_TYPE" &&
+    frameworkMultipleErrors.errors?.[2]?.code === "INVALID_TYPE" &&
+    frameworkMultipleErrors.errors?.[3]?.code === "INVALID_EMAIL",
+);
+
+// --------------------------------------------------
+// 4. MISSING REQUEST SOURCE BECOMES {}
+// --------------------------------------------------
+
+const frameworkMissingBody = validateFrameworkSources({
+  data: {},
+  rule: {
+    body: {
+      email: {
+        mandatory: true,
+        type: "email",
+      },
+    },
+  },
+});
+
+check(
+  "v1.8 framework sync treats missing configured source as empty object",
+  frameworkMissingBody.valid === false &&
+    frameworkMissingBody.errors?.length === 1 &&
+    frameworkMissingBody.errors?.[0]?.path === "body.email" &&
+    frameworkMissingBody.errors?.[0]?.code === "REQUIRED",
+);
+
+// --------------------------------------------------
+// 5. UNKNOWN FIELDS - STRIP
+// --------------------------------------------------
+
+const frameworkUnknownStrip = validateFrameworkSources({
+  data: {
+    body: {
+      name: "Kiran",
+      internalId: "SECRET-123",
+    },
+  },
+  rule: {
+    body: {
+      name: {
+        type: "string",
+      },
+    },
+  },
+});
+
+check(
+  "v1.8 framework sync inherits unknownFields strip",
+  frameworkUnknownStrip.valid === true &&
+    frameworkUnknownStrip.validatedPayload?.body?.name === "Kiran" &&
+    frameworkUnknownStrip.validatedPayload?.body?.internalId === undefined,
+);
+
+// --------------------------------------------------
+// 6. UNKNOWN FIELDS - ALLOW
+// --------------------------------------------------
+
+const frameworkUnknownAllow = validateFrameworkSources({
+  data: {
+    body: {
+      name: "Kiran",
+      internalId: "SECRET-123",
+    },
+  },
+  rule: {
+    body: {
+      name: {
+        type: "string",
+      },
+    },
+  },
+  options: {
+    unknownFields: "allow",
+  },
+});
+
+check(
+  "v1.8 framework sync inherits unknownFields allow",
+  frameworkUnknownAllow.valid === true &&
+    frameworkUnknownAllow.validatedPayload?.body?.name === "Kiran" &&
+    frameworkUnknownAllow.validatedPayload?.body?.internalId === "SECRET-123",
+);
+
+// --------------------------------------------------
+// 7. UNKNOWN FIELDS - REJECT
+// --------------------------------------------------
+
+const frameworkUnknownReject = validateFrameworkSources({
+  data: {
+    body: {
+      name: "Kiran",
+      internalId: "SECRET-123",
+    },
+  },
+  rule: {
+    body: {
+      name: {
+        type: "string",
+      },
+    },
+  },
+  options: {
+    unknownFields: "reject",
+  },
+});
+
+check(
+  "v1.8 framework sync prefixes UNKNOWN_FIELD path",
+  frameworkUnknownReject.valid === false &&
+    frameworkUnknownReject.errors?.length === 1 &&
+    frameworkUnknownReject.errors?.[0]?.path === "body.internalId" &&
+    frameworkUnknownReject.errors?.[0]?.code === "UNKNOWN_FIELD",
+);
+
+// --------------------------------------------------
+// 8. prettyErrors:true
+// --------------------------------------------------
+
+const frameworkPrettyErrors = validateFrameworkSources({
+  data: {
+    params: {
+      userId: 123,
+    },
+    body: {
+      email: "invalid-email",
+    },
+  },
+  rule: {
+    body: {
+      email: {
+        type: "email",
+      },
+    },
+    params: {
+      userId: {
+        type: "string",
+      },
+    },
+  },
+  options: {
+    prettyErrors: true,
+  },
+});
+
+check(
+  "v1.8 framework sync preserves pretty error strings",
+  frameworkPrettyErrors.valid === false &&
+    frameworkPrettyErrors.errors?.length === 2 &&
+    frameworkPrettyErrors.errors?.every((error) => typeof error === "string") &&
+    frameworkPrettyErrors.errors?.[0] ===
+      "Invalid type for attribute userId, required string value" &&
+    frameworkPrettyErrors.errors?.[1] ===
+      "Invalid email format for attribute email",
+);
+
+// --------------------------------------------------
+// 9. CUSTOM INVALID RESPONSE
+// --------------------------------------------------
+
+const frameworkCustomInvalidResponse = validateFrameworkSources({
+  data: {
+    body: {
+      email: "invalid-email",
+    },
+  },
+  rule: {
+    body: {
+      email: {
+        type: "email",
+      },
+    },
+  },
+  options: {
+    inValidPayloadResponse: {
+      statusCode: 422,
+      valid: false,
+      message: "Request validation failed",
+    },
+  },
+});
+
+check(
+  "v1.8 framework sync preserves custom invalid response",
+  frameworkCustomInvalidResponse.valid === false &&
+    frameworkCustomInvalidResponse.statusCode === 422 &&
+    frameworkCustomInvalidResponse.message === "Request validation failed" &&
+    frameworkCustomInvalidResponse.errors?.length === 1,
+);
+
+// --------------------------------------------------
+// 10. TRANSFORMED VALUES
+// --------------------------------------------------
+
+const frameworkTransformResult = validateFrameworkSources({
+  data: {
+    query: {
+      search: "  HELLO WORLD  ",
+    },
+    body: {
+      email: "  USER@EXAMPLE.COM  ",
+    },
+  },
+  rule: {
+    query: {
+      search: {
+        type: "string",
+        trim: true,
+        lowercase: true,
+      },
+    },
+    body: {
+      email: {
+        type: "email",
+        trim: true,
+        lowercase: true,
+      },
+    },
+  },
+});
+
+check(
+  "v1.8 framework sync preserves transformed source values",
+  frameworkTransformResult.valid === true &&
+    frameworkTransformResult.validatedPayload?.query?.search ===
+      "hello world" &&
+    frameworkTransformResult.validatedPayload?.body?.email ===
+      "user@example.com",
+);
+
+// --------------------------------------------------
+// 11. ORIGINAL SOURCE DATA MUST NOT BE MUTATED
+// --------------------------------------------------
+
+const originalFrameworkData = {
+  body: {
+    email: "  USER@EXAMPLE.COM  ",
+  },
+};
+
+const originalFrameworkEmail = originalFrameworkData.body.email;
+
+validateFrameworkSources({
+  data: originalFrameworkData,
+  rule: {
+    body: {
+      email: {
+        type: "email",
+        trim: true,
+        lowercase: true,
+      },
+    },
+  },
+});
+
+check(
+  "v1.8 framework sync does not mutate original request source data",
+  originalFrameworkData.body.email === originalFrameworkEmail,
+);
+
+// --------------------------------------------------
+// 12. CORE CONFIG ERRORS PROPAGATE
+// --------------------------------------------------
+
+let frameworkCoreConfigError = null;
+
+try {
+  validateFrameworkSources({
+    data: {
+      body: {},
+    },
+    rule: {
+      body: {
+        name: {
+          type: "string",
+        },
+      },
+    },
+    options: {
+      prettyErrors: "true",
+    },
+  });
+} catch (error) {
+  frameworkCoreConfigError = error;
+}
+
+check(
+  "v1.8 framework sync propagates core option configuration errors",
+  frameworkCoreConfigError?.message ===
+    "perfect-payload:- prettyErrors must be a boolean",
+);
+
+// --------------------------------------------------
+// 13. CUSTOM VALIDATOR THROWN ERROR PROPAGATES
+// --------------------------------------------------
+
+const frameworkThrownError = new Error("External validation service failed");
+
+let propagatedFrameworkError = null;
+
+try {
+  validateFrameworkSources({
+    data: {
+      body: {
+        username: "kiran",
+      },
+    },
+    rule: {
+      body: {
+        username: {
+          type: "string",
+          customValidator: () => {
+            throw frameworkThrownError;
+          },
+        },
+      },
+    },
+  });
+} catch (error) {
+  propagatedFrameworkError = error;
+}
+
+check(
+  "v1.8 framework sync propagates customValidator thrown errors",
+  propagatedFrameworkError === frameworkThrownError,
+);
+
+// ==================================================
+// v1.8.0 - FRAMEWORK ASYNC SOURCE AGGREGATION
+// ==================================================
+
+// --------------------------------------------------
+// 1. BODY ONLY - ASYNC SUCCESS
+// --------------------------------------------------
+
+const frameworkAsyncBodySuccess = await validateFrameworkSourcesAsync({
+  data: {
+    body: {
+      username: "kiran",
+    },
+  },
+  rule: {
+    body: {
+      username: {
+        mandatory: true,
+        type: "string",
+        customValidator: async () => true,
+      },
+    },
+  },
+});
+
+check(
+  "v1.8 framework async validates body source",
+  frameworkAsyncBodySuccess.valid === true &&
+    frameworkAsyncBodySuccess.validatedPayload?.body?.username === "kiran" &&
+    Object.keys(frameworkAsyncBodySuccess.validatedPayload).length === 1,
+);
+
+// --------------------------------------------------
+// 2. MULTIPLE SOURCES - ASYNC SUCCESS
+// --------------------------------------------------
+
+const frameworkAsyncMultipleSuccess = await validateFrameworkSourcesAsync({
+  data: {
+    headers: {
+      authorization: "Bearer token",
+    },
+    params: {
+      userId: "123",
+    },
+    query: {
+      search: "phone",
+    },
+    body: {
+      username: "kiran",
+    },
+  },
+  rule: {
+    body: {
+      username: {
+        type: "string",
+        customValidator: async () => true,
+      },
+    },
+    query: {
+      search: {
+        type: "string",
+        customValidator: async () => true,
+      },
+    },
+    params: {
+      userId: {
+        type: "string",
+        customValidator: async () => true,
+      },
+    },
+    headers: {
+      authorization: {
+        type: "string",
+        customValidator: async () => true,
+      },
+    },
+  },
+});
+
+check(
+  "v1.8 framework async validates multiple sources",
+  frameworkAsyncMultipleSuccess.valid === true &&
+    frameworkAsyncMultipleSuccess.validatedPayload?.headers?.authorization ===
+      "Bearer token" &&
+    frameworkAsyncMultipleSuccess.validatedPayload?.params?.userId === "123" &&
+    frameworkAsyncMultipleSuccess.validatedPayload?.query?.search === "phone" &&
+    frameworkAsyncMultipleSuccess.validatedPayload?.body?.username === "kiran",
+);
+
+check(
+  "v1.8 framework async returns sources in standard order",
+  JSON.stringify(
+    Object.keys(frameworkAsyncMultipleSuccess.validatedPayload),
+  ) === JSON.stringify(["headers", "params", "query", "body"]),
+);
+
+// --------------------------------------------------
+// 3. MULTIPLE ASYNC FAILURES - AGGREGATE
+// --------------------------------------------------
+
+const frameworkAsyncMultipleErrors = await validateFrameworkSourcesAsync({
+  data: {
+    headers: {
+      authorization: "invalid-token",
+    },
+    params: {
+      userId: "123",
+    },
+    query: {
+      search: "phone",
+    },
+    body: {
+      username: "taken-user",
+    },
+  },
+  rule: {
+    body: {
+      username: {
+        type: "string",
+        customValidator: async () => false,
+        customValidatorError: "Username is already taken",
+      },
+    },
+    query: {
+      search: {
+        type: "string",
+        customValidator: async () => false,
+        customValidatorError: "Search is not allowed",
+      },
+    },
+    params: {
+      userId: {
+        type: "string",
+        customValidator: async () => false,
+        customValidatorError: "User does not exist",
+      },
+    },
+    headers: {
+      authorization: {
+        type: "string",
+        customValidator: async () => false,
+        customValidatorError: "Authorization failed",
+      },
+    },
+  },
+});
+
+check(
+  "v1.8 framework async aggregates errors from all sources",
+  frameworkAsyncMultipleErrors.valid === false &&
+    frameworkAsyncMultipleErrors.errors?.length === 4,
+);
+
+check(
+  "v1.8 framework async prefixes structured error paths",
+  frameworkAsyncMultipleErrors.errors?.[0]?.path === "headers.authorization" &&
+    frameworkAsyncMultipleErrors.errors?.[1]?.path === "params.userId" &&
+    frameworkAsyncMultipleErrors.errors?.[2]?.path === "query.search" &&
+    frameworkAsyncMultipleErrors.errors?.[3]?.path === "body.username",
+);
+
+check(
+  "v1.8 framework async preserves deterministic error order",
+  frameworkAsyncMultipleErrors.errors?.[0]?.message ===
+    "Authorization failed" &&
+    frameworkAsyncMultipleErrors.errors?.[1]?.message ===
+      "User does not exist" &&
+    frameworkAsyncMultipleErrors.errors?.[2]?.message ===
+      "Search is not allowed" &&
+    frameworkAsyncMultipleErrors.errors?.[3]?.message ===
+      "Username is already taken",
+);
+
+// --------------------------------------------------
+// 4. COMPLETION ORDER MUST NOT CHANGE RESULT ORDER
+// --------------------------------------------------
+
+const frameworkAsyncCompletionOrder = await validateFrameworkSourcesAsync({
+  data: {
+    headers: {
+      value: "header",
+    },
+    params: {
+      value: "param",
+    },
+    query: {
+      value: "query",
+    },
+    body: {
+      value: "body",
+    },
+  },
+  rule: {
+    headers: {
+      value: {
+        type: "string",
+        customValidator: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 80));
+          return false;
+        },
+        customValidatorError: "Header failure",
+      },
+    },
+    params: {
+      value: {
+        type: "string",
+        customValidator: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 60));
+          return false;
+        },
+        customValidatorError: "Params failure",
+      },
+    },
+    query: {
+      value: {
+        type: "string",
+        customValidator: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 40));
+          return false;
+        },
+        customValidatorError: "Query failure",
+      },
+    },
+    body: {
+      value: {
+        type: "string",
+        customValidator: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 20));
+          return false;
+        },
+        customValidatorError: "Body failure",
+      },
+    },
+  },
+});
+
+check(
+  "v1.8 framework async completion order does not affect error order",
+  frameworkAsyncCompletionOrder.errors?.[0]?.message === "Header failure" &&
+    frameworkAsyncCompletionOrder.errors?.[1]?.message === "Params failure" &&
+    frameworkAsyncCompletionOrder.errors?.[2]?.message === "Query failure" &&
+    frameworkAsyncCompletionOrder.errors?.[3]?.message === "Body failure",
+);
+
+// --------------------------------------------------
+// 5. SOURCES ACTUALLY RUN CONCURRENTLY
+// --------------------------------------------------
+
+const frameworkConcurrencyStartedAt = Date.now();
+
+const frameworkConcurrencyResult = await validateFrameworkSourcesAsync({
+  data: {
+    headers: {
+      value: "header",
+    },
+    params: {
+      value: "param",
+    },
+    query: {
+      value: "query",
+    },
+    body: {
+      value: "body",
+    },
+  },
+  rule: {
+    headers: {
+      value: {
+        type: "string",
+        customValidator: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          return true;
+        },
+      },
+    },
+    params: {
+      value: {
+        type: "string",
+        customValidator: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          return true;
+        },
+      },
+    },
+    query: {
+      value: {
+        type: "string",
+        customValidator: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          return true;
+        },
+      },
+    },
+    body: {
+      value: {
+        type: "string",
+        customValidator: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          return true;
+        },
+      },
+    },
+  },
+});
+
+const frameworkConcurrencyDuration = Date.now() - frameworkConcurrencyStartedAt;
+
+check(
+  "v1.8 framework async executes request sources concurrently",
+  frameworkConcurrencyResult.valid === true &&
+    frameworkConcurrencyDuration < 300,
+);
+
+// --------------------------------------------------
+// 6. SYNC VALIDATION FAILURE STILL WORKS
+// --------------------------------------------------
+
+const frameworkAsyncSyncFailure = await validateFrameworkSourcesAsync({
+  data: {
+    body: {
+      email: "invalid-email",
+    },
+  },
+  rule: {
+    body: {
+      email: {
+        type: "email",
+        customValidator: async () => true,
+      },
+    },
+  },
+});
+
+check(
+  "v1.8 framework async preserves core sync-first validation",
+  frameworkAsyncSyncFailure.valid === false &&
+    frameworkAsyncSyncFailure.errors?.length === 1 &&
+    frameworkAsyncSyncFailure.errors?.[0]?.path === "body.email" &&
+    frameworkAsyncSyncFailure.errors?.[0]?.code === "INVALID_EMAIL",
+);
+
+// --------------------------------------------------
+// 7. MISSING SOURCE BECOMES {}
+// --------------------------------------------------
+
+const frameworkAsyncMissingSource = await validateFrameworkSourcesAsync({
+  data: {},
+  rule: {
+    body: {
+      username: {
+        mandatory: true,
+        type: "string",
+        customValidator: async () => true,
+      },
+    },
+  },
+});
+
+check(
+  "v1.8 framework async treats missing source as empty object",
+  frameworkAsyncMissingSource.valid === false &&
+    frameworkAsyncMissingSource.errors?.length === 1 &&
+    frameworkAsyncMissingSource.errors?.[0]?.path === "body.username" &&
+    frameworkAsyncMissingSource.errors?.[0]?.code === "REQUIRED",
+);
+
+// --------------------------------------------------
+// 8. prettyErrors:true - ASYNC VALIDATOR
+// --------------------------------------------------
+
+const frameworkAsyncPrettyErrors = await validateFrameworkSourcesAsync({
+  data: {
+    params: {
+      userId: "123",
+    },
+    body: {
+      username: "taken-user",
+    },
+  },
+  rule: {
+    body: {
+      username: {
+        type: "string",
+        customValidator: async () => false,
+        customValidatorError: "Username is already taken",
+      },
+    },
+    params: {
+      userId: {
+        type: "string",
+        customValidator: async () => false,
+        customValidatorError: "User does not exist",
+      },
+    },
+  },
+  options: {
+    prettyErrors: true,
+  },
+});
+
+check(
+  "v1.8 framework async preserves pretty error strings",
+  frameworkAsyncPrettyErrors.valid === false &&
+    frameworkAsyncPrettyErrors.errors?.length === 2 &&
+    frameworkAsyncPrettyErrors.errors?.every(
+      (error) => typeof error === "string",
+    ) &&
+    frameworkAsyncPrettyErrors.errors?.[0] === "User does not exist" &&
+    frameworkAsyncPrettyErrors.errors?.[1] === "Username is already taken",
+);
+
+// --------------------------------------------------
+// 9. CUSTOM INVALID RESPONSE
+// --------------------------------------------------
+
+const frameworkAsyncCustomResponse = await validateFrameworkSourcesAsync({
+  data: {
+    body: {
+      username: "taken-user",
+    },
+  },
+  rule: {
+    body: {
+      username: {
+        type: "string",
+        customValidator: async () => false,
+      },
+    },
+  },
+  options: {
+    inValidPayloadResponse: {
+      statusCode: 422,
+      valid: false,
+      message: "Async request validation failed",
+    },
+  },
+});
+
+check(
+  "v1.8 framework async preserves custom invalid response",
+  frameworkAsyncCustomResponse.valid === false &&
+    frameworkAsyncCustomResponse.statusCode === 422 &&
+    frameworkAsyncCustomResponse.message ===
+      "Async request validation failed" &&
+    frameworkAsyncCustomResponse.errors?.length === 1,
+);
+
+// --------------------------------------------------
+// 10. TRANSFORMED VALUES
+// --------------------------------------------------
+
+const frameworkAsyncTransform = await validateFrameworkSourcesAsync({
+  data: {
+    body: {
+      username: "  KIRAN  ",
+    },
+  },
+  rule: {
+    body: {
+      username: {
+        type: "string",
+        trim: true,
+        lowercase: true,
+        customValidator: async (value) => value === "kiran",
+      },
+    },
+  },
+});
+
+check(
+  "v1.8 framework async preserves transformed values",
+  frameworkAsyncTransform.valid === true &&
+    frameworkAsyncTransform.validatedPayload?.body?.username === "kiran",
+);
+
+// --------------------------------------------------
+// 11. ORIGINAL DATA IS NOT MUTATED
+// --------------------------------------------------
+
+const originalAsyncFrameworkData = {
+  body: {
+    username: "  KIRAN  ",
+  },
+};
+
+await validateFrameworkSourcesAsync({
+  data: originalAsyncFrameworkData,
+  rule: {
+    body: {
+      username: {
+        type: "string",
+        trim: true,
+        lowercase: true,
+        customValidator: async () => true,
+      },
+    },
+  },
+});
+
+check(
+  "v1.8 framework async does not mutate original source data",
+  originalAsyncFrameworkData.body.username === "  KIRAN  ",
+);
+
+// --------------------------------------------------
+// 12. ASYNC VALIDATOR THROWN ERROR PROPAGATES
+// --------------------------------------------------
+
+const expectedAsyncFrameworkError = new Error("Database unavailable");
+
+let propagatedAsyncFrameworkError = null;
+
+try {
+  await validateFrameworkSourcesAsync({
+    data: {
+      body: {
+        username: "kiran",
+      },
+    },
+    rule: {
+      body: {
+        username: {
+          type: "string",
+          customValidator: async () => {
+            throw expectedAsyncFrameworkError;
+          },
+        },
+      },
+    },
+  });
+} catch (error) {
+  propagatedAsyncFrameworkError = error;
+}
+
+check(
+  "v1.8 framework async propagates customValidator thrown errors",
+  propagatedAsyncFrameworkError === expectedAsyncFrameworkError,
+);
+
+// --------------------------------------------------
+// 13. CORE CONFIG ERROR PROPAGATES
+// --------------------------------------------------
+
+let frameworkAsyncConfigError = null;
+
+try {
+  await validateFrameworkSourcesAsync({
+    data: {
+      body: {},
+    },
+    rule: {
+      body: {
+        name: {
+          type: "string",
+        },
+      },
+    },
+    options: {
+      prettyErrors: "true",
+    },
+  });
+} catch (error) {
+  frameworkAsyncConfigError = error;
+}
+
+check(
+  "v1.8 framework async propagates core option configuration errors",
+  frameworkAsyncConfigError?.message ===
+    "perfect-payload:- prettyErrors must be a boolean",
+);
+
+// ==================================================
+// v1.8.0 - EXPRESS ADAPTER
+// ==================================================
+
+function createMockExpressResponse() {
+  return {
+    statusCode: null,
+    body: null,
+
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+
+    json(body) {
+      this.body = body;
+      return this;
+    },
+  };
+}
+
+// --------------------------------------------------
+// 1. SYNC - BODY SUCCESS
+// --------------------------------------------------
+
+{
+  const middleware = validateExpressPayload({
+    rule: {
+      body: {
+        email: {
+          mandatory: true,
+          type: "email",
+        },
+      },
+    },
+  });
+
+  const req = {
+    headers: {},
+    params: {},
+    query: {},
+    body: {
+      email: "user@example.com",
+    },
+  };
+
+  const res = createMockExpressResponse();
+
+  let nextCalled = false;
+
+  middleware(req, res, () => {
+    nextCalled = true;
+  });
+
+  check(
+    "v1.8 Express sync attaches validatedPayload and calls next",
+    nextCalled === true &&
+      req.validatedPayload?.body?.email === "user@example.com" &&
+      Object.keys(req.validatedPayload).length === 1 &&
+      res.statusCode === null &&
+      res.body === null,
+  );
+}
+
+// --------------------------------------------------
+// 2. SYNC - MULTIPLE SOURCES SUCCESS
+// --------------------------------------------------
+
+{
+  const middleware = validateExpressPayload({
+    rule: {
+      body: {
+        name: {
+          type: "string",
+        },
+      },
+      params: {
+        userId: {
+          type: "string",
+        },
+      },
+      headers: {
+        authorization: {
+          type: "string",
+        },
+      },
+    },
+  });
+
+  const req = {
+    headers: {
+      authorization: "Bearer token",
+    },
+    params: {
+      userId: "123",
+    },
+    query: {
+      ignored: "not-configured",
+    },
+    body: {
+      name: "Kiran",
+    },
+  };
+
+  const res = createMockExpressResponse();
+
+  let nextCalled = false;
+
+  middleware(req, res, () => {
+    nextCalled = true;
+  });
+
+  check(
+    "v1.8 Express sync attaches configured sources in standard order",
+    nextCalled === true &&
+      JSON.stringify(Object.keys(req.validatedPayload)) ===
+        JSON.stringify(["headers", "params", "body"]) &&
+      req.validatedPayload?.headers?.authorization === "Bearer token" &&
+      req.validatedPayload?.params?.userId === "123" &&
+      req.validatedPayload?.body?.name === "Kiran" &&
+      req.validatedPayload?.query === undefined,
+  );
+}
+
+// --------------------------------------------------
+// 3. SYNC - VALIDATION FAILURE
+// --------------------------------------------------
+
+{
+  const middleware = validateExpressPayload({
+    rule: {
+      body: {
+        email: {
+          mandatory: true,
+          type: "email",
+        },
+      },
+    },
+  });
+
+  const req = {
+    headers: {},
+    params: {},
+    query: {},
+    body: {
+      email: "invalid-email",
+    },
+  };
+
+  const res = createMockExpressResponse();
+
+  let nextCalled = false;
+
+  middleware(req, res, () => {
+    nextCalled = true;
+  });
+
+  check(
+    "v1.8 Express sync sends 400 validation response",
+    nextCalled === false &&
+      res.statusCode === 400 &&
+      res.body?.valid === false &&
+      res.body?.errors?.length === 1 &&
+      res.body?.errors?.[0]?.path === "body.email" &&
+      res.body?.errors?.[0]?.code === "INVALID_EMAIL",
+  );
+}
+
+// --------------------------------------------------
+// 4. SYNC - CUSTOM FAILURE STATUS
+// --------------------------------------------------
+
+{
+  const middleware = validateExpressPayload({
+    rule: {
+      body: {
+        email: {
+          type: "email",
+        },
+      },
+    },
+    options: {
+      inValidPayloadResponse: {
+        statusCode: 422,
+        valid: false,
+        message: "Request validation failed",
+      },
+    },
+  });
+
+  const req = {
+    headers: {},
+    params: {},
+    query: {},
+    body: {
+      email: "invalid-email",
+    },
+  };
+
+  const res = createMockExpressResponse();
+
+  let nextCalled = false;
+
+  middleware(req, res, () => {
+    nextCalled = true;
+  });
+
+  check(
+    "v1.8 Express sync uses custom invalid response status",
+    nextCalled === false &&
+      res.statusCode === 422 &&
+      res.body?.statusCode === 422 &&
+      res.body?.valid === false &&
+      res.body?.message === "Request validation failed",
+  );
+}
+
+// --------------------------------------------------
+// 5. SYNC - prettyErrors:true
+// --------------------------------------------------
+
+{
+  const middleware = validateExpressPayload({
+    rule: {
+      body: {
+        email: {
+          type: "email",
+        },
+      },
+    },
+    options: {
+      prettyErrors: true,
+    },
+  });
+
+  const req = {
+    headers: {},
+    params: {},
+    query: {},
+    body: {
+      email: "invalid-email",
+    },
+  };
+
+  const res = createMockExpressResponse();
+
+  let nextCalled = false;
+
+  middleware(req, res, () => {
+    nextCalled = true;
+  });
+
+  check(
+    "v1.8 Express sync supports prettyErrors",
+    nextCalled === false &&
+      res.statusCode === 400 &&
+      typeof res.body?.errors?.[0] === "string" &&
+      res.body?.errors?.[0] === "Invalid email format for attribute email",
+  );
+}
+
+// --------------------------------------------------
+// 6. SYNC - ORIGINAL REQUEST BODY NOT MUTATED
+// --------------------------------------------------
+
+{
+  const middleware = validateExpressPayload({
+    rule: {
+      body: {
+        email: {
+          type: "email",
+          trim: true,
+          lowercase: true,
+        },
+      },
+    },
+  });
+
+  const req = {
+    headers: {},
+    params: {},
+    query: {},
+    body: {
+      email: "  USER@EXAMPLE.COM  ",
+    },
+  };
+
+  const res = createMockExpressResponse();
+
+  middleware(req, res, () => {});
+
+  check(
+    "v1.8 Express sync does not mutate original request body",
+    req.body.email === "  USER@EXAMPLE.COM  " &&
+      req.validatedPayload?.body?.email === "user@example.com",
+  );
+}
+
+// --------------------------------------------------
+// 7. SYNC - THROWN VALIDATOR ERROR GOES TO next(error)
+// --------------------------------------------------
+
+{
+  const expectedError = new Error("External service failed");
+
+  const middleware = validateExpressPayload({
+    rule: {
+      body: {
+        username: {
+          type: "string",
+          customValidator: () => {
+            throw expectedError;
+          },
+        },
+      },
+    },
+  });
+
+  const req = {
+    headers: {},
+    params: {},
+    query: {},
+    body: {
+      username: "kiran",
+    },
+  };
+
+  const res = createMockExpressResponse();
+
+  let receivedError = null;
+
+  middleware(req, res, (error) => {
+    receivedError = error;
+  });
+
+  check(
+    "v1.8 Express sync forwards thrown errors to next",
+    receivedError === expectedError &&
+      res.statusCode === null &&
+      res.body === null,
+  );
+}
+
+// --------------------------------------------------
+// 8. CONFIG ERROR THROWS DURING MIDDLEWARE CREATION
+// --------------------------------------------------
+
+{
+  let configError = null;
+
+  try {
+    validateExpressPayload({
+      rule: {
+        cookies: {
+          sessionId: {
+            type: "string",
+          },
+        },
+      },
+    });
+  } catch (error) {
+    configError = error;
+  }
+
+  check(
+    "v1.8 Express validates configuration during middleware creation",
+    configError?.message ===
+      "perfect-payload:- unsupported request source cookies",
+  );
+}
+
+// --------------------------------------------------
+// 9. ASYNC - SUCCESS
+// --------------------------------------------------
+
+{
+  const middleware = validateExpressPayloadAsync({
+    rule: {
+      body: {
+        username: {
+          type: "string",
+          customValidator: async () => true,
+        },
+      },
+    },
+  });
+
+  const req = {
+    headers: {},
+    params: {},
+    query: {},
+    body: {
+      username: "kiran",
+    },
+  };
+
+  const res = createMockExpressResponse();
+
+  let nextCalled = false;
+
+  await middleware(req, res, () => {
+    nextCalled = true;
+  });
+
+  check(
+    "v1.8 Express async attaches validatedPayload and calls next",
+    nextCalled === true &&
+      req.validatedPayload?.body?.username === "kiran" &&
+      res.statusCode === null &&
+      res.body === null,
+  );
+}
+
+// --------------------------------------------------
+// 10. ASYNC - VALIDATION FAILURE
+// --------------------------------------------------
+
+{
+  const middleware = validateExpressPayloadAsync({
+    rule: {
+      body: {
+        username: {
+          type: "string",
+          customValidator: async () => false,
+          customValidatorError: "Username is already taken",
+        },
+      },
+    },
+  });
+
+  const req = {
+    headers: {},
+    params: {},
+    query: {},
+    body: {
+      username: "taken-user",
+    },
+  };
+
+  const res = createMockExpressResponse();
+
+  let nextCalled = false;
+
+  await middleware(req, res, () => {
+    nextCalled = true;
+  });
+
+  check(
+    "v1.8 Express async sends validation failure response",
+    nextCalled === false &&
+      res.statusCode === 400 &&
+      res.body?.valid === false &&
+      res.body?.errors?.length === 1 &&
+      res.body?.errors?.[0]?.path === "body.username" &&
+      res.body?.errors?.[0]?.code === "CUSTOM_VALIDATION_FAILED" &&
+      res.body?.errors?.[0]?.message === "Username is already taken",
+  );
+}
+
+// --------------------------------------------------
+// 11. ASYNC - THROWN ERROR GOES TO next(error)
+// --------------------------------------------------
+
+{
+  const expectedError = new Error("Database unavailable");
+
+  const middleware = validateExpressPayloadAsync({
+    rule: {
+      body: {
+        username: {
+          type: "string",
+          customValidator: async () => {
+            throw expectedError;
+          },
+        },
+      },
+    },
+  });
+
+  const req = {
+    headers: {},
+    params: {},
+    query: {},
+    body: {
+      username: "kiran",
+    },
+  };
+
+  const res = createMockExpressResponse();
+
+  let receivedError = null;
+
+  await middleware(req, res, (error) => {
+    receivedError = error;
+  });
+
+  check(
+    "v1.8 Express async forwards thrown errors to next",
+    receivedError === expectedError &&
+      res.statusCode === null &&
+      res.body === null,
+  );
+}
+
+// --------------------------------------------------
+// 12. MISSING REQUEST SOURCE
+// --------------------------------------------------
+
+{
+  const middleware = validateExpressPayload({
+    rule: {
+      body: {
+        email: {
+          mandatory: true,
+          type: "email",
+        },
+      },
+    },
+  });
+
+  const req = {
+    headers: {},
+    params: {},
+    query: {},
+  };
+
+  const res = createMockExpressResponse();
+
+  middleware(req, res, () => {});
+
+  check(
+    "v1.8 Express treats missing configured source as empty object",
+    res.statusCode === 400 &&
+      res.body?.errors?.[0]?.path === "body.email" &&
+      res.body?.errors?.[0]?.code === "REQUIRED",
+  );
+}
+
+// ==================================================
+// v1.8.0 - FASTIFY ADAPTER
+// ==================================================
+
+function createMockFastifyReply() {
+  return {
+    statusCode: null,
+    body: null,
+
+    code(code) {
+      this.statusCode = code;
+      return this;
+    },
+
+    send(body) {
+      this.body = body;
+      return this;
+    },
+  };
+}
+
+// --------------------------------------------------
+// 1. SYNC - BODY SUCCESS
+// --------------------------------------------------
+
+{
+  const hook = validateFastifyPayload({
+    rule: {
+      body: {
+        email: {
+          mandatory: true,
+          type: "email",
+        },
+      },
+    },
+  });
+
+  const request = {
+    headers: {},
+    params: {},
+    query: {},
+    body: {
+      email: "user@example.com",
+    },
+  };
+
+  const reply = createMockFastifyReply();
+
+  const result = await hook(request, reply);
+
+  check(
+    "v1.8 Fastify sync attaches validatedPayload",
+    result === undefined &&
+      request.validatedPayload?.body?.email === "user@example.com" &&
+      Object.keys(request.validatedPayload).length === 1 &&
+      reply.statusCode === null &&
+      reply.body === null,
+  );
+}
+
+// --------------------------------------------------
+// 2. SYNC - MULTIPLE SOURCES SUCCESS
+// --------------------------------------------------
+
+{
+  const hook = validateFastifyPayload({
+    rule: {
+      body: {
+        name: {
+          type: "string",
+        },
+      },
+      query: {
+        search: {
+          type: "string",
+        },
+      },
+      params: {
+        userId: {
+          type: "string",
+        },
+      },
+      headers: {
+        authorization: {
+          type: "string",
+        },
+      },
+    },
+  });
+
+  const request = {
+    headers: {
+      authorization: "Bearer token",
+    },
+    params: {
+      userId: "123",
+    },
+    query: {
+      search: "phone",
+    },
+    body: {
+      name: "Kiran",
+    },
+  };
+
+  const reply = createMockFastifyReply();
+
+  await hook(request, reply);
+
+  check(
+    "v1.8 Fastify sync attaches configured sources in standard order",
+    JSON.stringify(Object.keys(request.validatedPayload)) ===
+      JSON.stringify(["headers", "params", "query", "body"]) &&
+      request.validatedPayload?.headers?.authorization === "Bearer token" &&
+      request.validatedPayload?.params?.userId === "123" &&
+      request.validatedPayload?.query?.search === "phone" &&
+      request.validatedPayload?.body?.name === "Kiran" &&
+      reply.statusCode === null &&
+      reply.body === null,
+  );
+}
+
+// --------------------------------------------------
+// 3. SYNC - VALIDATION FAILURE
+// --------------------------------------------------
+
+{
+  const hook = validateFastifyPayload({
+    rule: {
+      body: {
+        email: {
+          mandatory: true,
+          type: "email",
+        },
+      },
+    },
+  });
+
+  const request = {
+    headers: {},
+    params: {},
+    query: {},
+    body: {
+      email: "invalid-email",
+    },
+  };
+
+  const reply = createMockFastifyReply();
+
+  await hook(request, reply);
+
+  check(
+    "v1.8 Fastify sync sends 400 validation response",
+    reply.statusCode === 400 &&
+      reply.body?.valid === false &&
+      reply.body?.errors?.length === 1 &&
+      reply.body?.errors?.[0]?.path === "body.email" &&
+      reply.body?.errors?.[0]?.code === "INVALID_EMAIL",
+  );
+}
+
+// --------------------------------------------------
+// 4. SYNC - CUSTOM FAILURE STATUS
+// --------------------------------------------------
+
+{
+  const hook = validateFastifyPayload({
+    rule: {
+      body: {
+        email: {
+          type: "email",
+        },
+      },
+    },
+    options: {
+      inValidPayloadResponse: {
+        statusCode: 422,
+        valid: false,
+        message: "Request validation failed",
+      },
+    },
+  });
+
+  const request = {
+    headers: {},
+    params: {},
+    query: {},
+    body: {
+      email: "invalid-email",
+    },
+  };
+
+  const reply = createMockFastifyReply();
+
+  await hook(request, reply);
+
+  check(
+    "v1.8 Fastify sync uses custom invalid response status",
+    reply.statusCode === 422 &&
+      reply.body?.statusCode === 422 &&
+      reply.body?.valid === false &&
+      reply.body?.message === "Request validation failed",
+  );
+}
+
+// --------------------------------------------------
+// 5. SYNC - prettyErrors:true
+// --------------------------------------------------
+
+{
+  const hook = validateFastifyPayload({
+    rule: {
+      body: {
+        email: {
+          type: "email",
+        },
+      },
+    },
+    options: {
+      prettyErrors: true,
+    },
+  });
+
+  const request = {
+    headers: {},
+    params: {},
+    query: {},
+    body: {
+      email: "invalid-email",
+    },
+  };
+
+  const reply = createMockFastifyReply();
+
+  await hook(request, reply);
+
+  check(
+    "v1.8 Fastify sync supports prettyErrors",
+    reply.statusCode === 400 &&
+      typeof reply.body?.errors?.[0] === "string" &&
+      reply.body?.errors?.[0] === "Invalid email format for attribute email",
+  );
+}
+
+// --------------------------------------------------
+// 6. SYNC - ORIGINAL REQUEST DATA NOT MUTATED
+// --------------------------------------------------
+
+{
+  const hook = validateFastifyPayload({
+    rule: {
+      body: {
+        email: {
+          type: "email",
+          trim: true,
+          lowercase: true,
+        },
+      },
+    },
+  });
+
+  const request = {
+    headers: {},
+    params: {},
+    query: {},
+    body: {
+      email: "  USER@EXAMPLE.COM  ",
+    },
+  };
+
+  const reply = createMockFastifyReply();
+
+  await hook(request, reply);
+
+  check(
+    "v1.8 Fastify sync does not mutate original request body",
+    request.body.email === "  USER@EXAMPLE.COM  " &&
+      request.validatedPayload?.body?.email === "user@example.com",
+  );
+}
+
+// --------------------------------------------------
+// 7. SYNC - THROWN ERROR PROPAGATES
+// --------------------------------------------------
+
+{
+  const expectedError = new Error("External service failed");
+
+  const hook = validateFastifyPayload({
+    rule: {
+      body: {
+        username: {
+          type: "string",
+          customValidator: () => {
+            throw expectedError;
+          },
+        },
+      },
+    },
+  });
+
+  const request = {
+    headers: {},
+    params: {},
+    query: {},
+    body: {
+      username: "kiran",
+    },
+  };
+
+  const reply = createMockFastifyReply();
+
+  let receivedError = null;
+
+  try {
+    await hook(request, reply);
+  } catch (error) {
+    receivedError = error;
+  }
+
+  check(
+    "v1.8 Fastify sync propagates thrown errors",
+    receivedError === expectedError &&
+      reply.statusCode === null &&
+      reply.body === null,
+  );
+}
+
+// --------------------------------------------------
+// 8. CONFIG ERROR THROWS DURING HOOK CREATION
+// --------------------------------------------------
+
+{
+  let configError = null;
+
+  try {
+    validateFastifyPayload({
+      rule: {
+        cookies: {
+          sessionId: {
+            type: "string",
+          },
+        },
+      },
+    });
+  } catch (error) {
+    configError = error;
+  }
+
+  check(
+    "v1.8 Fastify validates configuration during hook creation",
+    configError?.message ===
+      "perfect-payload:- unsupported request source cookies",
+  );
+}
+
+// --------------------------------------------------
+// 9. ASYNC - SUCCESS
+// --------------------------------------------------
+
+{
+  const hook = validateFastifyPayloadAsync({
+    rule: {
+      body: {
+        username: {
+          type: "string",
+          customValidator: async () => true,
+        },
+      },
+    },
+  });
+
+  const request = {
+    headers: {},
+    params: {},
+    query: {},
+    body: {
+      username: "kiran",
+    },
+  };
+
+  const reply = createMockFastifyReply();
+
+  const result = await hook(request, reply);
+
+  check(
+    "v1.8 Fastify async attaches validatedPayload",
+    result === undefined &&
+      request.validatedPayload?.body?.username === "kiran" &&
+      reply.statusCode === null &&
+      reply.body === null,
+  );
+}
+
+// --------------------------------------------------
+// 10. ASYNC - VALIDATION FAILURE
+// --------------------------------------------------
+
+{
+  const hook = validateFastifyPayloadAsync({
+    rule: {
+      body: {
+        username: {
+          type: "string",
+          customValidator: async () => false,
+          customValidatorError: "Username is already taken",
+        },
+      },
+    },
+  });
+
+  const request = {
+    headers: {},
+    params: {},
+    query: {},
+    body: {
+      username: "taken-user",
+    },
+  };
+
+  const reply = createMockFastifyReply();
+
+  await hook(request, reply);
+
+  check(
+    "v1.8 Fastify async sends validation failure response",
+    reply.statusCode === 400 &&
+      reply.body?.valid === false &&
+      reply.body?.errors?.length === 1 &&
+      reply.body?.errors?.[0]?.path === "body.username" &&
+      reply.body?.errors?.[0]?.code === "CUSTOM_VALIDATION_FAILED" &&
+      reply.body?.errors?.[0]?.message === "Username is already taken",
+  );
+}
+
+// --------------------------------------------------
+// 11. ASYNC - THROWN ERROR PROPAGATES
+// --------------------------------------------------
+
+{
+  const expectedError = new Error("Database unavailable");
+
+  const hook = validateFastifyPayloadAsync({
+    rule: {
+      body: {
+        username: {
+          type: "string",
+          customValidator: async () => {
+            throw expectedError;
+          },
+        },
+      },
+    },
+  });
+
+  const request = {
+    headers: {},
+    params: {},
+    query: {},
+    body: {
+      username: "kiran",
+    },
+  };
+
+  const reply = createMockFastifyReply();
+
+  let receivedError = null;
+
+  try {
+    await hook(request, reply);
+  } catch (error) {
+    receivedError = error;
+  }
+
+  check(
+    "v1.8 Fastify async propagates thrown errors",
+    receivedError === expectedError &&
+      reply.statusCode === null &&
+      reply.body === null,
+  );
+}
+
+// --------------------------------------------------
+// 12. MISSING REQUEST SOURCE
+// --------------------------------------------------
+
+{
+  const hook = validateFastifyPayload({
+    rule: {
+      body: {
+        email: {
+          mandatory: true,
+          type: "email",
+        },
+      },
+    },
+  });
+
+  const request = {
+    headers: {},
+    params: {},
+    query: {},
+  };
+
+  const reply = createMockFastifyReply();
+
+  await hook(request, reply);
+
+  check(
+    "v1.8 Fastify treats missing configured source as empty object",
+    reply.statusCode === 400 &&
+      reply.body?.errors?.[0]?.path === "body.email" &&
+      reply.body?.errors?.[0]?.code === "REQUIRED",
+  );
+}
+
+// ==========================================================
+// v1.8 - ERROR PRIVACY REGRESSION
+// Default modern error messages must never expose input values
+// ==========================================================
+
+{
+  const secretUrl = "SECRET_INVALID_URL";
+  const result = perfectPayload(
+    { website: secretUrl },
+    {
+      website: {
+        type: "url",
+      },
+    },
+  );
+
+  check(
+    "v1.8 privacy - URL does not expose submitted value",
+    result.errors?.[0]?.code === "INVALID_URL" &&
+      result.errors?.[0]?.message ===
+        "Invalid URL format for attribute website" &&
+      !result.errors?.[0]?.message.includes(secretUrl),
+  );
+}
+
+{
+  const secretEnum = "SECRET_ROLE";
+  const result = perfectPayload(
+    { role: secretEnum },
+    {
+      role: {
+        type: "enum",
+        enumValues: ["admin", "user"],
+      },
+    },
+  );
+
+  check(
+    "v1.8 privacy - enum does not expose submitted value",
+    result.errors?.[0]?.code === "INVALID_ENUM" &&
+      result.errors?.[0]?.message ===
+        "Invalid value for attribute role, valid values are admin, user" &&
+      !result.errors?.[0]?.message.includes(secretEnum),
+  );
+}
+
+{
+  const cases = [
+    {
+      type: "uuid",
+      code: "INVALID_UUID",
+      message: "Invalid UUID for attribute id",
+    },
+    {
+      type: "uuidv1",
+      code: "INVALID_UUID_V1",
+      message: "Invalid v1 UUID for attribute id",
+    },
+    {
+      type: "uuidv3",
+      code: "INVALID_UUID_V3",
+      message: "Invalid v3 UUID for attribute id",
+    },
+    {
+      type: "uuidv4",
+      code: "INVALID_UUID_V4",
+      message: "Invalid v4 UUID for attribute id",
+    },
+    {
+      type: "uuidv5",
+      code: "INVALID_UUID_V5",
+      message: "Invalid v5 UUID for attribute id",
+    },
+    {
+      type: "objectId",
+      code: "INVALID_OBJECT_ID",
+      message: "Invalid ObjectId for attribute id",
+    },
+  ];
+
+  for (const testCase of cases) {
+    const secretValue = `SECRET_${testCase.type.toUpperCase()}`;
+
+    const result = perfectPayload(
+      { id: secretValue },
+      {
+        id: {
+          type: testCase.type,
+        },
+      },
+    );
+
+    check(
+      `v1.8 privacy - ${testCase.type} does not expose submitted value`,
+      result.errors?.[0]?.code === testCase.code &&
+        result.errors?.[0]?.message === testCase.message &&
+        !result.errors?.[0]?.message.includes(secretValue),
+    );
+  }
+}
+
+{
+  const secretValue = "SECRET_NOT_NUMBER";
+
+  const result = perfectPayload(
+    { quantity: secretValue },
+    {
+      quantity: {
+        preventDecimal: true,
+      },
+    },
+  );
+
+  check(
+    "v1.8 privacy - preventDecimal invalid type does not expose submitted value",
+    result.errors?.[0]?.code === "INVALID_TYPE" &&
+      result.errors?.[0]?.message ===
+        "Invalid type for attribute quantity, required number value" &&
+      !result.errors?.[0]?.message.includes(secretValue),
+  );
+}
+
+{
+  const secretDecimal = 123.456789;
+
+  const result = perfectPayload(
+    { quantity: secretDecimal },
+    {
+      quantity: {
+        preventDecimal: true,
+      },
+    },
+  );
+
+  check(
+    "v1.8 privacy - preventDecimal does not expose submitted value",
+    result.errors?.[0]?.code === "DECIMAL_NOT_ALLOWED" &&
+      result.errors?.[0]?.message ===
+        "Decimal value not allowed in attribute quantity" &&
+      !result.errors?.[0]?.message.includes(String(secretDecimal)),
+  );
+}
+
+{
+  const secretValue = "SECRET_WRONG_TYPE";
+
+  const result = perfectPayload(
+    { age: secretValue },
+    {
+      age: {
+        type: "number",
+      },
+    },
+  );
+
+  check(
+    "v1.8 privacy - generic type error does not expose submitted value",
+    result.errors?.[0]?.code === "INVALID_TYPE" &&
+      result.errors?.[0]?.message ===
+        "Invalid type for attribute age, required number value" &&
+      !result.errors?.[0]?.message.includes(secretValue),
+  );
+}
+
+{
+  const result = perfectPayload(
+    {
+      age: 101,
+      score: -1,
+      percentage: 150,
+    },
+    {
+      age: {
+        max: 100,
+      },
+      score: {
+        min: 0,
+      },
+      percentage: {
+        range: "0-100",
+      },
+    },
+  );
+
+  check(
+    "v1.8 privacy - schema constraints remain available",
+    result.errors?.[0]?.message ===
+      "Maximum value 100 is allowed in attribute age" &&
+      result.errors?.[1]?.message ===
+        "Minimum value 0 is allowed in attribute score" &&
+      result.errors?.[2]?.message ===
+        "Attribute percentage should have a value between 0 and 100",
+  );
+}
 // ###########################
 
 // ========================================================

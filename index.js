@@ -526,7 +526,7 @@ export function perfectPayload(
 ) {
   const {
     unknownFields = "strip",
-
+    prettyErrors = false,
     validPayloadResponse = {
       statusCode: 200,
       valid: true,
@@ -544,8 +544,10 @@ export function perfectPayload(
       `perfect-payload:- unknownFields must be one of strip, allow, reject`,
     );
   }
-
-  return perfectPayloadStructured(
+  if (typeof prettyErrors !== "boolean") {
+    throw new Error(`perfect-payload:- prettyErrors must be a boolean`);
+  }
+  const validationResult = perfectPayloadStructured(
     data,
     dataValidationRule,
     validPayloadResponse,
@@ -555,6 +557,15 @@ export function perfectPayload(
       unknownFields,
     },
   );
+
+  if (prettyErrors && validationResult?.errors?.length) {
+    return {
+      ...validationResult,
+      errors: validationResult.errors.map((error) => error.message),
+    };
+  }
+
+  return validationResult;
 }
 
 export async function perfectPayloadAsync(
@@ -574,6 +585,7 @@ export async function perfectPayloadAsync(
       message: "One or more attribute values are invalid",
     },
     unknownFields = "strip",
+    prettyErrors = false,
   } = options ?? {};
 
   if (!["strip", "allow", "reject"].includes(unknownFields)) {
@@ -581,7 +593,9 @@ export async function perfectPayloadAsync(
       `perfect-payload:- unknownFields must be one of strip, allow, reject`,
     );
   }
-
+  if (typeof prettyErrors !== "boolean") {
+    throw new Error(`perfect-payload:- prettyErrors must be a boolean`);
+  }
   const validationResult = perfectPayloadStructured(
     data,
     dataValidationRule,
@@ -595,6 +609,13 @@ export async function perfectPayloadAsync(
   );
 
   if (validationResult?.errors?.length) {
+    if (prettyErrors) {
+      return {
+        ...validationResult,
+        errors: validationResult.errors.map((error) => error.message),
+      };
+    }
+
     return validationResult;
   }
 
@@ -606,7 +627,9 @@ export async function perfectPayloadAsync(
   if (rowErrors.length > 0) {
     return {
       ...inValidPayloadResponse,
-      errors: rowErrors,
+      errors: prettyErrors
+        ? rowErrors.map((error) => error.message)
+        : rowErrors,
     };
   }
 
@@ -1050,7 +1073,7 @@ function perfectPayloadStructured(
                       attributePath,
                       "INVALID_URL",
                       attributeRules?.["typeError"] ||
-                        `Invalid URL format(${attributeValue}) found in attribute ${attributePath}`,
+                        `Invalid URL format for attribute ${attributePath}`,
                     );
 
                     addNextError = false;
@@ -1067,7 +1090,7 @@ function perfectPayloadStructured(
                       attributePath,
                       "INVALID_ENUM",
                       attributeRules?.["typeError"] ||
-                        `Invalid value(${attributeValue}) found in attribute ${attributePath}, valid values are ${allEnumValues?.join(
+                        `Invalid value for attribute ${attributePath}, valid values are ${allEnumValues?.join(
                           ", ",
                         )}`,
                     );
@@ -1085,7 +1108,7 @@ function perfectPayloadStructured(
                       attributePath,
                       "INVALID_UUID",
                       attributeRules?.["typeError"] ||
-                        `Invalid UUID(${attributeValue}) found in attribute ${attributePath}`,
+                        `Invalid UUID for attribute ${attributePath}`,
                     );
 
                     addNextError = false;
@@ -1100,7 +1123,7 @@ function perfectPayloadStructured(
                       attributePath,
                       "INVALID_UUID_V1",
                       attributeRules?.["typeError"] ||
-                        `Invalid v1 UUID(${attributeValue}) found in attribute ${attributePath}`,
+                        `Invalid v1 UUID for attribute ${attributePath}`,
                     );
 
                     addNextError = false;
@@ -1115,7 +1138,7 @@ function perfectPayloadStructured(
                       attributePath,
                       "INVALID_UUID_V3",
                       attributeRules?.["typeError"] ||
-                        `Invalid v3 UUID(${attributeValue}) found in attribute ${attributePath}`,
+                        `Invalid v3 UUID for attribute ${attributePath}`,
                     );
 
                     addNextError = false;
@@ -1130,7 +1153,7 @@ function perfectPayloadStructured(
                       attributePath,
                       "INVALID_UUID_V4",
                       attributeRules?.["typeError"] ||
-                        `Invalid v4 UUID(${attributeValue}) found in attribute ${attributePath}`,
+                        `Invalid v4 UUID for attribute ${attributePath}`,
                     );
 
                     addNextError = false;
@@ -1145,7 +1168,7 @@ function perfectPayloadStructured(
                       attributePath,
                       "INVALID_UUID_V5",
                       attributeRules?.["typeError"] ||
-                        `Invalid v5 UUID(${attributeValue}) found in attribute ${attributePath}`,
+                        `Invalid v5 UUID for attribute ${attributePath}`,
                     );
 
                     addNextError = false;
@@ -1160,7 +1183,7 @@ function perfectPayloadStructured(
                       attributePath,
                       "INVALID_OBJECT_ID",
                       attributeRules?.["typeError"] ||
-                        `Invalid ObjectId(${attributeValue}) found in attribute ${attributePath}`,
+                        `Invalid ObjectId for attribute ${attributePath}`,
                     );
 
                     addNextError = false;
@@ -1295,7 +1318,7 @@ function perfectPayloadStructured(
                 rowErrors,
                 attributePath,
                 "INVALID_TYPE",
-                `Invalid ${typeof attributeValue} value(${attributeValue}) found in attribute ${attributePath}, required number value`,
+                `Invalid type for attribute ${attributePath}, required number value`,
               );
 
               addNextError = false;
@@ -1305,7 +1328,7 @@ function perfectPayloadStructured(
                 attributePath,
                 "DECIMAL_NOT_ALLOWED",
                 attributeRules?.["preventDecimalError"] ||
-                  `Decimal value not allowed in attribute ${attributePath}(${attributeValue})`,
+                  `Decimal value not allowed in attribute ${attributePath}`,
               );
 
               addNextError = false;
