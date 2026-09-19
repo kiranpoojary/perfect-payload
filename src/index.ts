@@ -568,25 +568,25 @@ export function perfectPayloadV1(
   }
 }
 
-export function perfectPayload<
-  T extends Record<string, unknown> = Record<string, unknown>,
->(
+export function perfectPayload<T extends object = Record<string, unknown>>(
   data: Record<string, unknown>,
   dataValidationRule: ValidationRules,
   options: PrettyErrorOptions,
 ): ValidationResult<T, string>;
 
-export function perfectPayload<
-  T extends Record<string, unknown> = Record<string, unknown>,
->(
+export function perfectPayload<T extends object = Record<string, unknown>>(
   data?: Record<string, unknown>,
   dataValidationRule?: ValidationRules,
   options?: StructuredErrorOptions,
 ): ValidationResult<T>;
 
-export function perfectPayload<
-  T extends Record<string, unknown> = Record<string, unknown>,
->(
+export function perfectPayload<T extends object = Record<string, unknown>>(
+  data: Record<string, unknown>,
+  dataValidationRule: ValidationRules,
+  options: PerfectPayloadOptions,
+): ValidationResult<T> | ValidationResult<T, string>;
+
+export function perfectPayload<T extends object = Record<string, unknown>>(
   data: Record<string, unknown> = {},
   dataValidationRule: ValidationRules = {},
   options: PerfectPayloadOptions = {},
@@ -639,24 +639,26 @@ export function perfectPayload<
   return validationResult;
 }
 
-export function perfectPayloadAsync<
-  T extends Record<string, unknown> = Record<string, unknown>,
->(
+export function perfectPayloadAsync<T extends object = Record<string, unknown>>(
   data: Record<string, unknown>,
   dataValidationRule: ValidationRules,
   options: PrettyErrorOptions,
 ): Promise<ValidationResult<T, string>>;
 
-export function perfectPayloadAsync<
-  T extends Record<string, unknown> = Record<string, unknown>,
->(
+export function perfectPayloadAsync<T extends object = Record<string, unknown>>(
   data?: Record<string, unknown>,
   dataValidationRule?: ValidationRules,
   options?: StructuredErrorOptions,
 ): Promise<ValidationResult<T>>;
 
+export function perfectPayloadAsync<T extends object = Record<string, unknown>>(
+  data: Record<string, unknown>,
+  dataValidationRule: ValidationRules,
+  options: PerfectPayloadOptions,
+): Promise<ValidationResult<T> | ValidationResult<T, string>>;
+
 export async function perfectPayloadAsync<
-  T extends Record<string, unknown> = Record<string, unknown>,
+  T extends object = Record<string, unknown>,
 >(
   data: Record<string, unknown> = {},
   dataValidationRule: ValidationRules = {},
@@ -729,9 +731,7 @@ export async function perfectPayloadAsync<
   return validationResult;
 }
 
-function perfectPayloadStructured<
-  T extends Record<string, unknown> = Record<string, unknown>,
->(
+function perfectPayloadStructured<T extends object = Record<string, unknown>>(
   data: Record<string, unknown> = {},
   dataValidationRule: ValidationRules = {},
   validPayloadResponse: ValidPayloadResponse = {
