@@ -21,7 +21,8 @@
   },
   "scripts": {
     "test": "jest",
-    "build": "tsc"
+    "build": "tsc",
+    "test:types": "tsc type-test.ts --noEmit --strict --module NodeNext --moduleResolution NodeNext --target ES2022 --ignoreConfig --skipLibCheck"
   },
   "files": [
     "dist"
