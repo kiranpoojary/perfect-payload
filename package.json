@@ -1,6 +1,6 @@
 {
   "name": "perfect-payload",
-  "version": "2.0.0-beta.1",
+  "version": "2.0.0-beta.2",
   "type": "module",
   "description": "Lightweight JSON payload validation library with structured errors, nested validation, field paths, and customizable validation rules.",
   "main": "./dist/index.js",
@@ -8,15 +8,18 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./express": {
       "types": "./dist/express.d.ts",
-      "import": "./dist/express.js"
+      "import": "./dist/express.js",
+      "default": "./dist/express.js"
     },
     "./fastify": {
       "types": "./dist/fastify.d.ts",
-      "import": "./dist/fastify.js"
+      "import": "./dist/fastify.js",
+      "default": "./dist/fastify.js"
     }
   },
   "scripts": {
