@@ -4,14 +4,16 @@ A lightweight JavaScript payload validation utility for validating API
 and JSON payloads with simple rule-based configuration.
 
 `perfect-payload` supports structured validation errors, nested field
-paths, synchronous custom validators, and synchronous payload
-transformation/sanitization while keeping the validation schema simple.
+paths, synchronous custom validators, synchronous payload
+transformation/sanitization, array size constraints, and deeply nested
+array/object validation while keeping the validation schema simple.
 
 ## Quick Links
 
 - [Installation](#installation)
 - [Basic Usage](#basic-usage)
 - [Validation Rules](#validation-rules)
+- [Array Size and Nested Validation](#array-size-and-nested-validation)
 - [Transformations and
   Sanitization](#transformations-and-sanitization)
 - [Custom Validators](#customvalidator)
@@ -293,6 +295,68 @@ Error code: `EMPTY_ARRAY_NOT_ALLOWED`
 
 ---
 
+### `minItems`
+
+Defines the minimum number of items required in an array.
+
+Default: Not applied when omitted.
+
+```js
+const rules = {
+  tags: {
+    type: "array",
+    minItems: 2,
+  },
+};
+```
+
+An array with fewer than 2 items returns `MIN_ITEMS`.
+
+```js
+{
+  path: "tags",
+  code: "MIN_ITEMS",
+  message: "Attribute tags must contain at least 2 item(s)"
+}
+```
+
+`minItems` is enforced even when `allowEmptyArray: true` is set. For example, `minItems: 2` still rejects `[]`.
+
+Error code: `MIN_ITEMS`
+
+---
+
+### `maxItems`
+
+Defines the maximum number of items allowed in an array.
+
+Default: Not applied when omitted.
+
+```js
+const rules = {
+  tags: {
+    type: "array",
+    maxItems: 5,
+  },
+};
+```
+
+An array with more than 5 items returns `MAX_ITEMS`.
+
+```js
+{
+  path: "tags",
+  code: "MAX_ITEMS",
+  message: "Attribute tags must contain at most 5 item(s)"
+}
+```
+
+`minItems` and `maxItems` can be used together.
+
+Error code: `MAX_ITEMS`
+
+---
+
 ### `type`
 
 Validates the expected data type.
@@ -414,6 +478,8 @@ INVALID_UUID_V5
 
 INVALID_OBJECT_ID
 ```
+
+For `type: "number"`, `NaN` is rejected as `INVALID_TYPE`.
 
 ---
 
@@ -731,6 +797,103 @@ Example error:
 
 ---
 
+## Array Size and Nested Validation
+
+`perfectPayload()` supports array size constraints and recursive validation of arrays and objects at multiple depths. Array indexes and nested object keys are preserved in structured error paths.
+
+### Array size constraints
+
+Use `minItems` and `maxItems` with `type: "array"`:
+
+```js
+const rules = {
+  products: {
+    type: "array",
+    minItems: 1,
+    maxItems: 3,
+    elementConstraints: {
+      type: "object",
+      objectAttr: {
+        productId: { mandatory: true, type: "string" },
+        quantity: { mandatory: true, type: "number", min: 1 },
+      },
+    },
+  },
+};
+```
+
+If the array is empty, `minItems` reports the array path itself:
+
+```js
+{
+  path: "products",
+  code: "MIN_ITEMS",
+  message: "Attribute products must contain at least 1 item(s)"
+}
+```
+
+### Arrays of objects
+
+`elementConstraints` can contain `objectAttr`, allowing every object in an array to use a nested schema. An invalid quantity in the second product is reported as:
+
+```text
+products[1].quantity
+```
+
+### Deeply nested arrays and objects
+
+`objectAttr` and `elementConstraints` can be combined recursively:
+
+```js
+const rules = {
+  orders: {
+    type: "array",
+    minItems: 1,
+    maxItems: 2,
+    elementConstraints: {
+      type: "object",
+      objectAttr: {
+        orderId: { mandatory: true, type: "string" },
+        items: {
+          mandatory: true,
+          type: "array",
+          minItems: 1,
+          maxItems: 2,
+          elementConstraints: {
+            type: "object",
+            objectAttr: {
+              productId: { mandatory: true, type: "string" },
+              quantity: { mandatory: true, type: "number", min: 1 },
+            },
+          },
+        },
+      },
+    },
+  },
+};
+```
+
+A deep validation failure preserves the complete indexed path, for example:
+
+```text
+orders[1].items[2].quantity
+```
+
+Array constraints work at nested levels too. A nested array can report paths such as:
+
+```text
+orders[1].items
+```
+
+Nested arrays are supported and every array index is preserved:
+
+```text
+matrix[1][1]
+matrix[1][1][1]
+```
+
+Transformations applied inside nested objects or array elements are preserved in `validatedPayload`, while the original input remains unchanged.
+
 ### Transformations and Sanitization
 
 `perfectPayload()` can transform a field before its validation rules
@@ -922,9 +1085,17 @@ not passed to transformation functions; null handling remains controlled
 by `allowNull`.
 
 **Important:** `transform` is synchronous. A non-function transformer,
-an `async` transformer, or a transformer that returns a Promise is not
-supported and throws an error. Exceptions thrown inside the transformer
-propagate to the caller.
+an `async` transformer, a transformer that returns a Promise, or a
+transformer that returns `undefined` is not supported and throws an error.
+Returning `null`, `""`, `0`, or `false` is allowed; the transformed value is
+then processed by the normal validation rules. Exceptions thrown inside the
+transformer propagate to the caller.
+
+For example, returning `undefined` throws:
+
+```text
+perfect-payload:- transform must not return undefined for attribute username
+```
 
 ### `customValidator`
 
@@ -1051,6 +1222,10 @@ EMPTY_OBJECT_NOT_ALLOWED
 
 EMPTY_ARRAY_NOT_ALLOWED
 
+MIN_ITEMS
+
+MAX_ITEMS
+
 INVALID_ARRAY_ELEMENT
 
 REGEX_MISMATCH
@@ -1086,6 +1261,8 @@ MIN_VALUE
 MAX_VALUE
 
 OUT_OF_RANGE
+
+CUSTOM_VALIDATION_FAILED
 ```
 
 These codes are designed for programmatic handling while `message`
@@ -1732,6 +1909,8 @@ marks[1]
 
 marks[2]
 ```
+
+Array-level constraints such as `minItems` and `maxItems` report the path of the array itself. For nested arrays, the complete parent path is retained, for example `orders[1].items`.
 
 ### Nested Fields Inside Arrays
 
