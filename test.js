@@ -834,54 +834,6 @@ const customValidResult = perfectPayload(validPayload, validationRule, {
 });
 
 // ========================================================
-// PRINT FULL RESULTS
-// ========================================================
-
-console.log("\n========================================================");
-
-console.log("perfectPayload() - INVALID RESULT");
-
-console.log("========================================================");
-
-console.dir(invalidResult, {
-  depth: null,
-  colors: true,
-});
-
-console.log("\n========================================================");
-
-console.log("perfectPayload() - VALID RESULT");
-
-console.log("========================================================");
-
-console.dir(validResult, {
-  depth: null,
-  colors: true,
-});
-
-console.log("\n========================================================");
-
-console.log("perfectPayload() - CUSTOM INVALID RESULT");
-
-console.log("========================================================");
-
-console.dir(customInvalidResult, {
-  depth: null,
-  colors: true,
-});
-
-console.log("\n========================================================");
-
-console.log("perfectPayload() - CUSTOM VALID RESULT");
-
-console.log("========================================================");
-
-console.dir(customValidResult, {
-  depth: null,
-  colors: true,
-});
-
-// ========================================================
 // REGRESSION HELPERS
 // ========================================================
 
