@@ -745,6 +745,7 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
   },
   basePath: string = "",
   options: StructuredValidationOptions = {},
+  rootPayload: Record<string, unknown> = data,
 ): ValidationResult<T> {
   let validatedPayload: Record<string, unknown> = {};
   let rowErrors: ValidationError[] = [];
@@ -825,7 +826,7 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
         );
       }
 
-      const transformedValue = transformer(attributeValue, data);
+      const transformedValue = transformer(attributeValue, rootPayload);
 
       if (
         transformedValue &&
@@ -980,6 +981,7 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
                   },
                   "",
                   options,
+                  rootPayload,
                 );
 
                 if (
@@ -1595,6 +1597,7 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
               },
               attributePath,
               options,
+              rootPayload,
             );
 
             if (nestedResult.valid === true) {
