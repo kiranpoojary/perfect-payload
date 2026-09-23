@@ -1,5 +1,7 @@
-import type { ValidationRules } from "./types/rules.js";
-
+import type {
+  ValidationRules,
+  ArrayElementTransformFunction,
+} from "./types/rules.js";
 import type {
   PerfectPayloadOptions,
   StructuredErrorOptions,
@@ -20,6 +22,7 @@ type LegacyValidationRules = Record<string, Record<string, any>>;
 interface StructuredValidationOptions {
   skipCustomValidator?: boolean;
   unknownFields?: "strip" | "allow" | "reject";
+  elementIndex?: number;
 }
 
 interface LegacyValidResponse {
@@ -826,7 +829,14 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
         );
       }
 
-      const transformedValue = transformer(attributeValue, rootPayload);
+      const transformedValue =
+        options.elementIndex !== undefined
+          ? (transformer as unknown as ArrayElementTransformFunction)(
+              attributeValue,
+              options.elementIndex,
+              rootPayload,
+            )
+          : transformer(attributeValue, rootPayload);
 
       if (
         transformedValue &&
@@ -972,7 +982,7 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
                   },
                   {
                     [attributeName]: elementConstraints,
-                  },
+                  } as unknown as ValidationRules,
                   { statusCode: 200, valid: true },
                   {
                     statusCode: 400,
@@ -980,7 +990,10 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
                     message: "One or more attribute values are invalid",
                   },
                   "",
-                  options,
+                  {
+                    ...options,
+                    elementIndex,
+                  },
                   rootPayload,
                 );
 
@@ -1998,7 +2011,7 @@ async function runAsyncCustomValidators(
           },
           {
             [attributeName]: attributeRules.elementConstraints,
-          },
+          } as unknown as ValidationRules,
         );
 
         for (const elementError of elementErrors) {

@@ -19,6 +19,12 @@ export type TransformFunction = (
   payload: Record<string, unknown>,
 ) => unknown;
 
+export type ArrayElementTransformFunction = (
+  value: unknown,
+  index: number,
+  payload: Record<string, unknown>,
+) => unknown;
+
 export type CustomValidator = (
   value: unknown,
   payload: Record<string, unknown>,
@@ -33,7 +39,9 @@ export interface DependencyRule {
 
 export type DependencyRules = Record<string, DependencyRule>;
 
-export interface AttributeValidationRules {
+export interface AttributeValidationRules<
+  TTransform extends (...args: any[]) => unknown = TransformFunction,
+> {
   mandatory?: boolean;
   allowNull?: boolean;
   allowEmptyObject?: boolean;
@@ -76,12 +84,14 @@ export interface AttributeValidationRules {
 
   regex?: RegExp;
 
+  transform?: TTransform;
   objectAttr?: ValidationRules;
-  elementConstraints?: AttributeValidationRules;
+
+  elementConstraints?: AttributeValidationRules<ArrayElementTransformFunction>;
+
   dependency?: DependencyRules;
   customValidator?: CustomValidator;
 
-  transform?: TransformFunction;
   trim?: boolean;
   lowercase?: boolean;
   uppercase?: boolean;
