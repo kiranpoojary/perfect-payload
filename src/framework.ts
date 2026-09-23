@@ -99,7 +99,7 @@ export function validateFrameworkSources({
 
     for (const error of result.errors ?? []) {
       if (typeof error === "string") {
-        errors.push(error);
+        errors.push(`${source}.${error}`);
       } else {
         errors.push({
           ...error,
@@ -172,7 +172,7 @@ export async function validateFrameworkSourcesAsync({
 
     for (const error of result.errors ?? []) {
       if (typeof error === "string") {
-        errors.push(error);
+        errors.push(`${source}.${error}`);
       } else {
         errors.push({
           ...error,
