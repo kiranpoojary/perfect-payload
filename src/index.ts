@@ -774,6 +774,22 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
     const isMandatoryField = attributeRules?.["mandatory"] ?? false;
 
     const attrExist = Object.keys(data ?? {}).includes(attributeName);
+
+    const mandatoryValidationFailed =
+      isMandatoryField && (!attrExist || attributeValue === "");
+
+    if (mandatoryValidationFailed) {
+      addNextError = false;
+      addStructuredError(
+        rowErrors,
+        attributePath,
+        "REQUIRED",
+        attributeRules?.["mandatoryError"] || `${attributePath} is mandatory`,
+      );
+    } else if (!attrExist) {
+      addNextError = false;
+    }
+
     // TRANSFORMATIONS START
     // NO MULTI TRANSFORMATION
     if (
@@ -786,6 +802,7 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
     }
     // TRIM
     if (
+      addNextError &&
       attrExist &&
       attributeValue !== null &&
       attributeRules?.trim === true &&
@@ -795,6 +812,7 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
     }
     // LOWERCASE
     if (
+      addNextError &&
       attrExist &&
       attributeValue !== null &&
       attributeRules?.lowercase === true &&
@@ -806,6 +824,7 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
     // UPPERCASE
 
     if (
+      addNextError &&
       attrExist &&
       attributeValue !== null &&
       attributeRules?.uppercase === true &&
@@ -865,20 +884,7 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
         // ==================================================
 
         case "mandatory":
-          if (isMandatoryField && (!attrExist || attributeValue === "")) {
-            addNextError = false;
-
-            addStructuredError(
-              rowErrors,
-              attributePath,
-              "REQUIRED",
-              attributeRules?.["mandatoryError"] ||
-                `${attributePath} is mandatory`,
-            );
-          } else if (!attrExist) {
-            addNextError = false;
-          }
-
+          //handled outside bcoz contract is mandatory->transform
           break;
 
         // ==================================================
