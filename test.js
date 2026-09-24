@@ -810,19 +810,15 @@ const customInvalidResponse = {
 const invalidResult = perfectPayload(invalidPayload, validationRule);
 
 const validResult = perfectPayload(validPayload, validationRule);
-const customInvalidResult = perfectPayload(
-  invalidPayload,
-  validationRule,
-  customValidResponse,
-  customInvalidResponse,
-);
+const customInvalidResult = perfectPayload(invalidPayload, validationRule, {
+  validPayloadResponse: customValidResponse,
+  inValidPayloadResponse: customInvalidResponse,
+});
 
-const customValidResult = perfectPayload(
-  validPayload,
-  validationRule,
-  customValidResponse,
-  customInvalidResponse,
-);
+const customValidResult = perfectPayload(validPayload, validationRule, {
+  validPayloadResponse: customValidResponse,
+  inValidPayloadResponse: customInvalidResponse,
+});
 
 // ========================================================
 // PRINT FULL RESULTS
@@ -4303,6 +4299,550 @@ check(
       code: "INVALID_EMAIL",
     }) &&
     asyncValidatorExecutedAfterSyncError === false,
+);
+
+// ==================================================
+// v1.7.0 - UNKNOWN FIELD HANDLING
+// ==================================================
+
+const unknownFieldPayload = {
+  name: "Kiran",
+  role: "developer",
+  active: true,
+};
+
+const unknownFieldRules = {
+  name: {
+    type: "string",
+  },
+};
+
+// DEFAULT / STRIP
+const unknownFieldStripResult = perfectPayload(
+  unknownFieldPayload,
+  unknownFieldRules,
+);
+
+check(
+  "v1.7 unknownFields defaults to strip",
+  unknownFieldStripResult.valid === true &&
+    unknownFieldStripResult.validatedPayload?.name === "Kiran" &&
+    !Object.prototype.hasOwnProperty.call(
+      unknownFieldStripResult.validatedPayload,
+      "role",
+    ) &&
+    !Object.prototype.hasOwnProperty.call(
+      unknownFieldStripResult.validatedPayload,
+      "active",
+    ),
+);
+
+// ALLOW
+const unknownFieldAllowResult = perfectPayload(
+  unknownFieldPayload,
+  unknownFieldRules,
+  {
+    unknownFields: "allow",
+  },
+);
+
+check(
+  "v1.7 unknownFields allow preserves unknown fields",
+  unknownFieldAllowResult.valid === true &&
+    unknownFieldAllowResult.validatedPayload?.name === "Kiran" &&
+    unknownFieldAllowResult.validatedPayload?.role === "developer" &&
+    unknownFieldAllowResult.validatedPayload?.active === true,
+);
+
+// REJECT
+const unknownFieldRejectResult = perfectPayload(
+  unknownFieldPayload,
+  unknownFieldRules,
+  {
+    unknownFields: "reject",
+  },
+);
+
+check(
+  "v1.7 unknownFields reject returns structured errors",
+  unknownFieldRejectResult.valid === false &&
+    unknownFieldRejectResult.errors?.length === 2 &&
+    unknownFieldRejectResult.errors?.[0]?.path === "role" &&
+    unknownFieldRejectResult.errors?.[0]?.code === "UNKNOWN_FIELD" &&
+    unknownFieldRejectResult.errors?.[1]?.path === "active" &&
+    unknownFieldRejectResult.errors?.[1]?.code === "UNKNOWN_FIELD",
+);
+
+// ORIGINAL PAYLOAD MUST NOT BE MUTATED
+check(
+  "v1.7 unknownFields does not mutate original payload",
+  unknownFieldPayload.name === "Kiran" &&
+    unknownFieldPayload.role === "developer" &&
+    unknownFieldPayload.active === true,
+);
+
+// ==================================================
+// v1.7.0 - UNKNOWN FIELD HANDLING - NESTED + ASYNC
+// ==================================================
+
+// NESTED OBJECT - STRIP
+const nestedUnknownStripResult = perfectPayload(
+  {
+    profile: {
+      city: "Bengaluru",
+      role: "developer",
+    },
+  },
+  {
+    profile: {
+      type: "object",
+      objectAttr: {
+        city: {
+          type: "string",
+        },
+      },
+    },
+  },
+);
+
+check(
+  "v1.7 unknownFields strip works with nested objectAttr",
+  nestedUnknownStripResult.valid === true &&
+    nestedUnknownStripResult.validatedPayload?.profile?.city === "Bengaluru" &&
+    !Object.prototype.hasOwnProperty.call(
+      nestedUnknownStripResult.validatedPayload?.profile,
+      "role",
+    ),
+);
+
+// NESTED OBJECT - ALLOW
+const nestedUnknownAllowResult = perfectPayload(
+  {
+    profile: {
+      city: "Bengaluru",
+      role: "developer",
+    },
+  },
+  {
+    profile: {
+      type: "object",
+      objectAttr: {
+        city: {
+          type: "string",
+        },
+      },
+    },
+  },
+  {
+    unknownFields: "allow",
+  },
+);
+
+check(
+  "v1.7 unknownFields allow works with nested objectAttr",
+  nestedUnknownAllowResult.valid === true &&
+    nestedUnknownAllowResult.validatedPayload?.profile?.city === "Bengaluru" &&
+    nestedUnknownAllowResult.validatedPayload?.profile?.role === "developer",
+);
+
+// NESTED OBJECT - REJECT
+const nestedUnknownRejectResult = perfectPayload(
+  {
+    profile: {
+      city: "Bengaluru",
+      role: "developer",
+    },
+  },
+  {
+    profile: {
+      type: "object",
+      objectAttr: {
+        city: {
+          type: "string",
+        },
+      },
+    },
+  },
+  {
+    unknownFields: "reject",
+  },
+);
+
+check(
+  "v1.7 unknownFields reject returns nested path",
+  nestedUnknownRejectResult.valid === false &&
+    nestedUnknownRejectResult.errors?.[0]?.path === "profile.role" &&
+    nestedUnknownRejectResult.errors?.[0]?.code === "UNKNOWN_FIELD",
+);
+
+// ARRAY ELEMENT CONSTRAINTS - REJECT
+const arrayUnknownRejectResult = perfectPayload(
+  {
+    products: [
+      {
+        name: "iPhone",
+        price: 80000,
+        internalId: "A001",
+      },
+    ],
+  },
+  {
+    products: {
+      type: "array",
+      elementConstraints: {
+        type: "object",
+        objectAttr: {
+          name: {
+            type: "string",
+          },
+          price: {
+            type: "number",
+          },
+        },
+      },
+    },
+  },
+  {
+    unknownFields: "reject",
+  },
+);
+
+check(
+  "v1.7 unknownFields reject returns indexed array path",
+  arrayUnknownRejectResult.valid === false &&
+    arrayUnknownRejectResult.errors?.[0]?.path === "products[0].internalId" &&
+    arrayUnknownRejectResult.errors?.[0]?.code === "UNKNOWN_FIELD",
+);
+
+// ASYNC - ALLOW
+const asyncUnknownAllowResult = await perfectPayloadAsync(
+  {
+    username: "kiran",
+    role: "developer",
+  },
+  {
+    username: {
+      type: "string",
+      customValidator: async () => true,
+    },
+  },
+  {
+    unknownFields: "allow",
+  },
+);
+
+check(
+  "v1.7 async unknownFields allow preserves unknown fields",
+  asyncUnknownAllowResult.valid === true &&
+    asyncUnknownAllowResult.validatedPayload?.username === "kiran" &&
+    asyncUnknownAllowResult.validatedPayload?.role === "developer",
+);
+
+// ASYNC - REJECT + VERIFY ASYNC VALIDATOR IS SKIPPED
+let unknownFieldAsyncValidatorCalled = false;
+
+const asyncUnknownRejectResult = await perfectPayloadAsync(
+  {
+    username: "kiran",
+    role: "developer",
+  },
+  {
+    username: {
+      type: "string",
+      customValidator: async () => {
+        unknownFieldAsyncValidatorCalled = true;
+        return true;
+      },
+    },
+  },
+  {
+    unknownFields: "reject",
+  },
+);
+
+check(
+  "v1.7 async unknownFields reject returns structured error",
+  asyncUnknownRejectResult.valid === false &&
+    asyncUnknownRejectResult.errors?.[0]?.path === "role" &&
+    asyncUnknownRejectResult.errors?.[0]?.code === "UNKNOWN_FIELD",
+);
+
+check(
+  "v1.7 async validator does not run when unknownFields reject fails sync phase",
+  unknownFieldAsyncValidatorCalled === false,
+);
+
+// ==================================================
+// v1.7.0 - UNKNOWN FIELD HANDLING - OWN PROPERTIES
+// ==================================================
+
+const inheritedUnknownPayload = Object.create({
+  inheritedField: "should-not-be-processed",
+});
+
+inheritedUnknownPayload.name = "Kiran";
+inheritedUnknownPayload.role = "developer";
+
+const inheritedUnknownRules = {
+  name: {
+    type: "string",
+  },
+};
+
+const inheritedUnknownAllowResult = perfectPayload(
+  inheritedUnknownPayload,
+  inheritedUnknownRules,
+  {
+    unknownFields: "allow",
+  },
+);
+
+check(
+  "v1.7 unknownFields allow ignores inherited properties",
+  inheritedUnknownAllowResult.valid === true &&
+    inheritedUnknownAllowResult.validatedPayload?.name === "Kiran" &&
+    inheritedUnknownAllowResult.validatedPayload?.role === "developer" &&
+    !Object.prototype.hasOwnProperty.call(
+      inheritedUnknownAllowResult.validatedPayload,
+      "inheritedField",
+    ),
+);
+
+const inheritedUnknownRejectResult = perfectPayload(
+  inheritedUnknownPayload,
+  inheritedUnknownRules,
+  {
+    unknownFields: "reject",
+  },
+);
+
+check(
+  "v1.7 unknownFields reject ignores inherited properties",
+  inheritedUnknownRejectResult.valid === false &&
+    inheritedUnknownRejectResult.errors?.length === 1 &&
+    inheritedUnknownRejectResult.errors?.[0]?.path === "role" &&
+    inheritedUnknownRejectResult.errors?.[0]?.code === "UNKNOWN_FIELD",
+);
+
+// ==================================================
+// v1.7.0 - UNKNOWN FIELD - ARRAY INDEXED MESSAGE
+// ==================================================
+
+const arrayUnknownFieldMessageResult = perfectPayload(
+  {
+    products: [
+      {
+        productId: "P100",
+        quantity: 2,
+        internalId: "INT-100",
+      },
+    ],
+  },
+  {
+    products: {
+      mandatory: true,
+      type: "array",
+      elementConstraints: {
+        type: "object",
+        objectAttr: {
+          productId: {
+            mandatory: true,
+            type: "string",
+          },
+          quantity: {
+            mandatory: true,
+            type: "number",
+          },
+        },
+      },
+    },
+  },
+  {
+    unknownFields: "reject",
+  },
+);
+
+check(
+  "v1.7 unknown field inside array includes index in path and message",
+  arrayUnknownFieldMessageResult.valid === false &&
+    arrayUnknownFieldMessageResult.errors?.length === 1 &&
+    arrayUnknownFieldMessageResult.errors?.[0]?.path ===
+      "products[0].internalId" &&
+    arrayUnknownFieldMessageResult.errors?.[0]?.code === "UNKNOWN_FIELD" &&
+    arrayUnknownFieldMessageResult.errors?.[0]?.message ===
+      "Unknown field products[0].internalId is not allowed",
+);
+
+// ==================================================
+// v1.7.0 - THREE ARGUMENT API - CUSTOM RESPONSES
+// ==================================================
+
+const v17CustomValidResponseResult = perfectPayload(
+  {
+    name: "  KIRAN  ",
+    role: "developer",
+  },
+  {
+    name: {
+      mandatory: true,
+      type: "string",
+      trim: true,
+      lowercase: true,
+    },
+  },
+  {
+    unknownFields: "allow",
+    validPayloadResponse: {
+      statusCode: 201,
+      valid: true,
+      message: "Payload validation successful",
+    },
+    inValidPayloadResponse: {
+      statusCode: 422,
+      valid: false,
+      message: "Custom validation failed",
+    },
+  },
+);
+
+check(
+  "v1.7 three argument API uses custom valid response",
+  v17CustomValidResponseResult.statusCode === 201 &&
+    v17CustomValidResponseResult.valid === true &&
+    v17CustomValidResponseResult.message === "Payload validation successful" &&
+    v17CustomValidResponseResult.validatedPayload?.name === "kiran" &&
+    v17CustomValidResponseResult.validatedPayload?.role === "developer",
+);
+
+const v17CustomInvalidResponseResult = perfectPayload(
+  {
+    email: "invalid-email",
+    role: "developer",
+  },
+  {
+    email: {
+      mandatory: true,
+      type: "email",
+    },
+  },
+  {
+    unknownFields: "allow",
+    validPayloadResponse: {
+      statusCode: 201,
+      valid: true,
+      message: "Payload validation successful",
+    },
+    inValidPayloadResponse: {
+      statusCode: 422,
+      valid: false,
+      message: "Custom validation failed",
+    },
+  },
+);
+
+check(
+  "v1.7 three argument API uses custom invalid response",
+  v17CustomInvalidResponseResult.statusCode === 422 &&
+    v17CustomInvalidResponseResult.valid === false &&
+    v17CustomInvalidResponseResult.message === "Custom validation failed" &&
+    v17CustomInvalidResponseResult.errors?.length === 1 &&
+    v17CustomInvalidResponseResult.errors?.[0]?.path === "email" &&
+    v17CustomInvalidResponseResult.errors?.[0]?.code === "INVALID_EMAIL",
+);
+
+// ==================================================
+// v1.7.0 - ASYNC THREE ARGUMENT API - CUSTOM RESPONSES
+// ==================================================
+
+const v17AsyncRules = {
+  username: {
+    mandatory: true,
+    type: "string",
+    trim: true,
+    lowercase: true,
+    customValidator: async (value) => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      return value !== "blocked";
+    },
+  },
+
+  profile: {
+    mandatory: true,
+    type: "object",
+    objectAttr: {
+      city: {
+        mandatory: true,
+        type: "string",
+      },
+    },
+  },
+};
+
+const v17AsyncOptions = {
+  unknownFields: "allow",
+
+  validPayloadResponse: {
+    statusCode: 201,
+    valid: true,
+    message: "Async validation successful",
+  },
+
+  inValidPayloadResponse: {
+    statusCode: 422,
+    valid: false,
+    message: "Async validation failed",
+  },
+};
+
+// Async success
+const v17AsyncValidResponseResult = await perfectPayloadAsync(
+  {
+    username: "  KIRAN  ",
+    role: "developer",
+    profile: {
+      city: "Bengaluru",
+      internalCode: "BLR-01",
+    },
+  },
+  v17AsyncRules,
+  v17AsyncOptions,
+);
+
+check(
+  "v1.7 async three argument API uses options and custom valid response",
+  v17AsyncValidResponseResult.statusCode === 201 &&
+    v17AsyncValidResponseResult.valid === true &&
+    v17AsyncValidResponseResult.message === "Async validation successful" &&
+    v17AsyncValidResponseResult.validatedPayload?.username === "kiran" &&
+    v17AsyncValidResponseResult.validatedPayload?.role === "developer" &&
+    v17AsyncValidResponseResult.validatedPayload?.profile?.city ===
+      "Bengaluru" &&
+    v17AsyncValidResponseResult.validatedPayload?.profile?.internalCode ===
+      "BLR-01",
+);
+
+// Async customValidator failure
+const v17AsyncInvalidResponseResult = await perfectPayloadAsync(
+  {
+    username: "blocked",
+    role: "developer",
+    profile: {
+      city: "Bengaluru",
+    },
+  },
+  v17AsyncRules,
+  v17AsyncOptions,
+);
+
+check(
+  "v1.7 async three argument API uses custom invalid response",
+  v17AsyncInvalidResponseResult.statusCode === 422 &&
+    v17AsyncInvalidResponseResult.valid === false &&
+    v17AsyncInvalidResponseResult.message === "Async validation failed" &&
+    v17AsyncInvalidResponseResult.errors?.length === 1 &&
+    v17AsyncInvalidResponseResult.errors?.[0]?.path === "username" &&
+    v17AsyncInvalidResponseResult.errors?.[0]?.code ===
+      "CUSTOM_VALIDATION_FAILED",
 );
 
 // ###########################
