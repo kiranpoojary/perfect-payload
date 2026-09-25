@@ -101,9 +101,12 @@ export function validateFrameworkSources({
       if (typeof error === "string") {
         errors.push(`${source}.${error}`);
       } else {
+        const sourcePath = `${source}.${error.path}`;
+
         errors.push({
           ...error,
-          path: `${source}.${error.path}`,
+          path: sourcePath,
+          message: error.message.replace(error.path, sourcePath),
         });
       }
     }
@@ -174,9 +177,12 @@ export async function validateFrameworkSourcesAsync({
       if (typeof error === "string") {
         errors.push(`${source}.${error}`);
       } else {
+        const sourcePath = `${source}.${error.path}`;
+
         errors.push({
           ...error,
-          path: `${source}.${error.path}`,
+          path: sourcePath,
+          message: error.message.replace(error.path, sourcePath),
         });
       }
     }
