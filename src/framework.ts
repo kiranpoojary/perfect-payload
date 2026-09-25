@@ -99,7 +99,15 @@ export function validateFrameworkSources({
 
     for (const error of result.errors ?? []) {
       if (typeof error === "string") {
-        errors.push(`${source}.${error}`);
+        const customValidatorPrefix = "Custom validation failed for attribute ";
+
+        if (error.startsWith(customValidatorPrefix)) {
+          const path = error.slice(customValidatorPrefix.length);
+
+          errors.push(`${customValidatorPrefix}${source}.${path}`);
+        } else {
+          errors.push(`${source}.${error}`);
+        }
       } else {
         const sourcePath = `${source}.${error.path}`;
 
@@ -175,7 +183,15 @@ export async function validateFrameworkSourcesAsync({
 
     for (const error of result.errors ?? []) {
       if (typeof error === "string") {
-        errors.push(`${source}.${error}`);
+        const customValidatorPrefix = "Custom validation failed for attribute ";
+
+        if (error.startsWith(customValidatorPrefix)) {
+          const path = error.slice(customValidatorPrefix.length);
+
+          errors.push(`${customValidatorPrefix}${source}.${path}`);
+        } else {
+          errors.push(`${source}.${error}`);
+        }
       } else {
         const sourcePath = `${source}.${error.path}`;
 
