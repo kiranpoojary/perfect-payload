@@ -5,17 +5,17 @@ import type {
 
 export type UnknownFieldsMode = "strip" | "allow" | "reject";
 
-export interface PerfectPayloadOptions {
+export interface ValidationOptions {
   unknownFields?: UnknownFieldsMode;
   prettyErrors?: boolean;
   validPayloadResponse?: ValidPayloadResponse;
   inValidPayloadResponse?: InvalidPayloadResponse;
 }
 
-export interface StructuredErrorOptions extends PerfectPayloadOptions {
+export interface StructuredErrorOptions extends ValidationOptions {
   prettyErrors?: false;
 }
 
-export interface PrettyErrorOptions extends PerfectPayloadOptions {
+export interface PrettyErrorOptions extends ValidationOptions {
   prettyErrors: true;
 }

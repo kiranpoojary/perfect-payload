@@ -1,5 +1,5 @@
 import type { ValidationRules } from "./rules.js";
-import type { PerfectPayloadOptions } from "./options.js";
+import type { ValidationOptions } from "./options.js";
 import type { ValidationError } from "./errors.js";
 
 export type RequestSource = "headers" | "params" | "query" | "body";
@@ -12,7 +12,7 @@ export type FrameworkData = Partial<
 
 export interface FrameworkConfig {
   rule?: FrameworkRule;
-  options?: PerfectPayloadOptions;
+  options?: ValidationOptions;
 }
 
 export interface FrameworkValidationInput extends FrameworkConfig {

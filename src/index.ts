@@ -3,7 +3,7 @@ import type {
   ArrayElementTransformFunction,
 } from "./types/rules.js";
 import type {
-  PerfectPayloadOptions,
+  ValidationOptions,
   StructuredErrorOptions,
   PrettyErrorOptions,
 } from "./types/options.js";
@@ -586,13 +586,13 @@ export function perfectPayload<T extends object = Record<string, unknown>>(
 export function perfectPayload<T extends object = Record<string, unknown>>(
   data: Record<string, unknown>,
   dataValidationRule: ValidationRules,
-  options: PerfectPayloadOptions,
+  options: ValidationOptions,
 ): ValidationResult<T> | ValidationResult<T, string>;
 
 export function perfectPayload<T extends object = Record<string, unknown>>(
   data: Record<string, unknown> = {},
   dataValidationRule: ValidationRules = {},
-  options: PerfectPayloadOptions = {},
+  options: ValidationOptions = {},
 ): ValidationResult<T> | ValidationResult<T, string> {
   const {
     unknownFields = "strip",
@@ -657,7 +657,7 @@ export function perfectPayloadAsync<T extends object = Record<string, unknown>>(
 export function perfectPayloadAsync<T extends object = Record<string, unknown>>(
   data: Record<string, unknown>,
   dataValidationRule: ValidationRules,
-  options: PerfectPayloadOptions,
+  options: ValidationOptions,
 ): Promise<ValidationResult<T> | ValidationResult<T, string>>;
 
 export async function perfectPayloadAsync<
@@ -665,7 +665,7 @@ export async function perfectPayloadAsync<
 >(
   data: Record<string, unknown> = {},
   dataValidationRule: ValidationRules = {},
-  options: PerfectPayloadOptions = {},
+  options: ValidationOptions = {},
 ): Promise<ValidationResult<T> | ValidationResult<T, string>> {
   const {
     validPayloadResponse = {
@@ -2055,3 +2055,10 @@ export type {
   DependencyRule,
   DependencyRules,
 } from "./types/rules.js";
+
+export type {
+  ValidationOptions,
+  StructuredErrorOptions,
+  PrettyErrorOptions,
+  UnknownFieldsMode,
+} from "./types/options.js";
