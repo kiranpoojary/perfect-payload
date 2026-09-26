@@ -642,6 +642,53 @@ export function perfectPayload<T extends object = Record<string, unknown>>(
   return validationResult;
 }
 
+export function perfectPayloadForFramework<
+  T extends object = Record<string, unknown>,
+>(
+  data: Record<string, unknown>,
+  dataValidationRule: ValidationRules,
+  options: ValidationOptions = {},
+  source: string,
+): ValidationResult<T> | ValidationResult<T, string> {
+  const {
+    unknownFields = "strip",
+    prettyErrors = false,
+    validPayloadResponse = {
+      statusCode: 200,
+      valid: true,
+    },
+    inValidPayloadResponse = {
+      statusCode: 400,
+      valid: false,
+      message: "One or more attribute values are invalid",
+    },
+  } = options ?? {};
+
+  const validationResult = perfectPayloadStructured<T>(
+    data,
+    dataValidationRule,
+    validPayloadResponse,
+    inValidPayloadResponse,
+    source,
+    {
+      unknownFields,
+    },
+  );
+
+  if (
+    prettyErrors &&
+    validationResult.valid === false &&
+    validationResult.errors.length
+  ) {
+    return {
+      ...validationResult,
+      errors: validationResult.errors.map((error) => error.message),
+    };
+  }
+
+  return validationResult;
+}
+
 export function perfectPayloadAsync<T extends object = Record<string, unknown>>(
   data: Record<string, unknown>,
   dataValidationRule: ValidationRules,
@@ -715,6 +762,74 @@ export async function perfectPayloadAsync<
   const rowErrors = await runAsyncCustomValidators(
     validationResult.valid === true ? validationResult.validatedPayload : {},
     dataValidationRule,
+  );
+
+  if (rowErrors.length > 0) {
+    if (prettyErrors) {
+      return {
+        ...inValidPayloadResponse,
+        errors: rowErrors.map((error) => error.message),
+      };
+    }
+
+    return {
+      ...inValidPayloadResponse,
+      errors: rowErrors,
+    };
+  }
+
+  return validationResult;
+}
+
+export async function perfectPayloadAsyncForFramework<
+  T extends object = Record<string, unknown>,
+>(
+  data: Record<string, unknown>,
+  dataValidationRule: ValidationRules,
+  options: ValidationOptions = {},
+  source: string,
+): Promise<ValidationResult<T> | ValidationResult<T, string>> {
+  const {
+    validPayloadResponse = {
+      statusCode: 200,
+      valid: true,
+    },
+    inValidPayloadResponse = {
+      statusCode: 400,
+      valid: false,
+      message: "One or more attribute values are invalid",
+    },
+    unknownFields = "strip",
+    prettyErrors = false,
+  } = options ?? {};
+
+  const validationResult = perfectPayloadStructured<T>(
+    data,
+    dataValidationRule,
+    validPayloadResponse,
+    inValidPayloadResponse,
+    source,
+    {
+      skipCustomValidator: true,
+      unknownFields,
+    },
+  );
+
+  if (validationResult.valid === false && validationResult.errors.length) {
+    if (prettyErrors) {
+      return {
+        ...validationResult,
+        errors: validationResult.errors.map((error) => error.message),
+      };
+    }
+
+    return validationResult;
+  }
+
+  const rowErrors = await runAsyncCustomValidators(
+    validationResult.valid === true ? validationResult.validatedPayload : {},
+    dataValidationRule,
+    source,
   );
 
   if (rowErrors.length > 0) {
@@ -1932,8 +2047,8 @@ function isPassedRegex(
 }
 
 async function runAsyncCustomValidators(
-  data: Record<string, unknown> = {},
-  dataValidationRule: ValidationRules = {},
+  data: Record<string, unknown>,
+  dataValidationRule: ValidationRules,
   basePath: string = "",
 ): Promise<ValidationError[]> {
   const errors: ValidationError[] = [];

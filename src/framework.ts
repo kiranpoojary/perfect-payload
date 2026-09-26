@@ -1,4 +1,9 @@
-import { perfectPayload, perfectPayloadAsync } from "./index.js";
+import {
+  perfectPayload,
+  perfectPayloadAsync,
+  perfectPayloadForFramework,
+  perfectPayloadAsyncForFramework,
+} from "./index.js";
 import type {
   FrameworkConfig,
   FrameworkValidationInput,
@@ -85,7 +90,12 @@ export function validateFrameworkSources({
         ? data[source]
         : {};
 
-    const result = perfectPayload(sourceData, frameworkRule[source]!, options);
+    const result = perfectPayloadForFramework(
+      sourceData,
+      frameworkRule[source]!,
+      options,
+      source,
+    );
 
     if (result.valid === true) {
       validatedPayload[source] = result.validatedPayload;
@@ -98,25 +108,7 @@ export function validateFrameworkSources({
     }
 
     for (const error of result.errors ?? []) {
-      if (typeof error === "string") {
-        const customValidatorPrefix = "Custom validation failed for attribute ";
-
-        if (error.startsWith(customValidatorPrefix)) {
-          const path = error.slice(customValidatorPrefix.length);
-
-          errors.push(`${customValidatorPrefix}${source}.${path}`);
-        } else {
-          errors.push(`${source}.${error}`);
-        }
-      } else {
-        const sourcePath = `${source}.${error.path}`;
-
-        errors.push({
-          ...error,
-          path: sourcePath,
-          message: error.message.replace(error.path, sourcePath),
-        });
-      }
+      errors.push(error);
     }
   }
 
@@ -150,10 +142,11 @@ export async function validateFrameworkSourcesAsync({
           ? data[source]
           : {};
 
-      const result = await perfectPayloadAsync(
+      const result = await perfectPayloadAsyncForFramework(
         sourceData,
         frameworkRule[source]!,
         options,
+        source,
       );
 
       return {
@@ -182,25 +175,7 @@ export async function validateFrameworkSourcesAsync({
     }
 
     for (const error of result.errors ?? []) {
-      if (typeof error === "string") {
-        const customValidatorPrefix = "Custom validation failed for attribute ";
-
-        if (error.startsWith(customValidatorPrefix)) {
-          const path = error.slice(customValidatorPrefix.length);
-
-          errors.push(`${customValidatorPrefix}${source}.${path}`);
-        } else {
-          errors.push(`${source}.${error}`);
-        }
-      } else {
-        const sourcePath = `${source}.${error.path}`;
-
-        errors.push({
-          ...error,
-          path: sourcePath,
-          message: error.message.replace(error.path, sourcePath),
-        });
-      }
+      errors.push(error);
     }
   }
 
