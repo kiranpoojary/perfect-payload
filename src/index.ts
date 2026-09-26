@@ -47,6 +47,26 @@ interface LegacyValidationResult {
   [key: string]: any;
 }
 
+const VALIDATION_RULE_ORDER = [
+  "allowNull",
+  "type",
+  "allowEmptyObject",
+  "allowEmptyArray",
+  "objectAttr",
+  "elementConstraints",
+  "minItems",
+  "maxItems",
+  "regex",
+  "minLength",
+  "maxLength",
+  "preventDecimal",
+  "min",
+  "max",
+  "range",
+  "dependency",
+  "customValidator",
+] as const;
+
 let perfectPayloadV1DeprecationWarningShown = false;
 
 function showPerfectPayloadV1DeprecationWarning() {
@@ -937,7 +957,6 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
     }
 
     // UPPERCASE
-
     if (
       addNextError &&
       attrExist &&
@@ -949,8 +968,8 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
     }
 
     // CUSTOM TRANSFORM
-
     if (
+      addNextError &&
       attrExist &&
       attributeValue !== null &&
       attributeRules?.transform !== undefined
@@ -992,20 +1011,11 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
       attributeValue = transformedValue;
     }
     // TRANSFORMATIONS END
-    for (const ruleName in attributeRules) {
+    for (const ruleName of VALIDATION_RULE_ORDER) {
+      if (!(ruleName in attributeRules)) {
+        continue;
+      }
       switch (ruleName) {
-        // ==================================================
-        // MANDATORY
-        // ==================================================
-
-        case "mandatory":
-          //handled outside bcoz contract is mandatory->transform
-          break;
-
-        // ==================================================
-        // NULL
-        // ==================================================
-
         case "allowNull":
           if (addNextError && attributeValue === null) {
             if (!attributeRules?.[ruleName]) {
@@ -1020,13 +1030,7 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
               );
             }
           }
-
           break;
-
-        // ==================================================
-        // EMPTY OBJECT
-        // ==================================================
-
         case "allowEmptyObject":
           if (addNextError) {
             if (
@@ -1047,11 +1051,6 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
           }
 
           break;
-
-        // ==================================================
-        // EMPTY ARRAY
-        // ==================================================
-
         case "allowEmptyArray":
           if (addNextError) {
             if (
@@ -1072,11 +1071,6 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
           }
 
           break;
-
-        // ==================================================
-        // ARRAY ELEMENT CONSTRAINTS
-        // ==================================================
-
         case "elementConstraints":
           if (addNextError) {
             if (isArray(attributeValue) && attributeValue.length > 0) {
@@ -1167,10 +1161,8 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
           }
 
           break;
-
         case "minItems": {
           const minItems = attributeRules.minItems;
-
           if (
             addNextError &&
             attrExist &&
@@ -1191,7 +1183,6 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
 
           break;
         }
-
         case "maxItems": {
           const maxItems = attributeRules.maxItems;
 
@@ -1215,10 +1206,6 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
 
           break;
         }
-        // ==================================================
-        // REGEX
-        // ==================================================
-
         case "regex":
           if (addNextError) {
             if (!isPassedRegex(attributeRules[ruleName], attributeValue)) {
@@ -1235,11 +1222,6 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
           }
 
           break;
-
-        // ==================================================
-        // TYPE
-        // ==================================================
-
         case "type":
           if (addNextError) {
             if (attributeValue == null && nullAllowed) {
@@ -1491,10 +1473,6 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
           }
 
           break;
-
-        // ==================================================
-        // MIN LENGTH
-        // ==================================================
         case "minLength": {
           const minLength = attributeRules.minLength;
 
@@ -1530,10 +1508,6 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
 
           break;
         }
-        // ==================================================
-        // MAX LENGTH
-        // ==================================================
-
         case "maxLength": {
           const maxLength = attributeRules.maxLength;
 
@@ -1569,10 +1543,6 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
 
           break;
         }
-        // ==================================================
-        // PREVENT DECIMAL
-        // ==================================================
-
         case "preventDecimal":
           if (addNextError) {
             if (attributeValue == null && nullAllowed) {
@@ -1600,11 +1570,6 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
           }
 
           break;
-
-        // ==================================================
-        // MIN
-        // ==================================================
-
         case "min": {
           const min = attributeRules.min;
 
@@ -1635,12 +1600,8 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
 
           break;
         }
-        // ==================================================
-        // MAX
-        // ==================================================
         case "max": {
           const max = attributeRules.max;
-
           if (addNextError) {
             if (attributeValue == null && nullAllowed) {
               addNextError = true;
@@ -1668,10 +1629,6 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
 
           break;
         }
-        // ==================================================
-        // RANGE
-        // ==================================================
-
         case "range": {
           const range = attributeRules.range;
 
@@ -1706,10 +1663,6 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
 
           break;
         }
-
-        // ==================================================
-        // NESTED OBJECT
-        // ==================================================
         case "objectAttr": {
           const objectAttr = attributeRules.objectAttr;
 
@@ -1743,10 +1696,6 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
 
           break;
         }
-        // ==================================================
-        // DEPENDENCY
-        // ==================================================
-
         case "dependency": {
           const dependency = attributeRules.dependency;
 
@@ -1802,10 +1751,6 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
 
           break;
         }
-        // ==================================================
-        // CUSTOM VALIDATOR
-        // ==================================================
-
         case "customValidator":
           if (
             !skipCustomValidator &&
@@ -1848,7 +1793,6 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
           }
 
           break;
-
         default:
           break;
       }
