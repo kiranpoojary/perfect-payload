@@ -1,4 +1,4 @@
-import { perfectPayload, perfectPayloadAsync } from "./index.js";
+import { perfectPayload, perfectPayloadAsync } from "./dist/index.js";
 import {
   validateFrameworkConfig,
   validateFrameworkSources,
@@ -831,54 +831,6 @@ const customInvalidResult = perfectPayload(invalidPayload, validationRule, {
 const customValidResult = perfectPayload(validPayload, validationRule, {
   validPayloadResponse: customValidResponse,
   inValidPayloadResponse: customInvalidResponse,
-});
-
-// ========================================================
-// PRINT FULL RESULTS
-// ========================================================
-
-console.log("\n========================================================");
-
-console.log("perfectPayload() - INVALID RESULT");
-
-console.log("========================================================");
-
-console.dir(invalidResult, {
-  depth: null,
-  colors: true,
-});
-
-console.log("\n========================================================");
-
-console.log("perfectPayload() - VALID RESULT");
-
-console.log("========================================================");
-
-console.dir(validResult, {
-  depth: null,
-  colors: true,
-});
-
-console.log("\n========================================================");
-
-console.log("perfectPayload() - CUSTOM INVALID RESULT");
-
-console.log("========================================================");
-
-console.dir(customInvalidResult, {
-  depth: null,
-  colors: true,
-});
-
-console.log("\n========================================================");
-
-console.log("perfectPayload() - CUSTOM VALID RESULT");
-
-console.log("========================================================");
-
-console.dir(customValidResult, {
-  depth: null,
-  colors: true,
 });
 
 // ========================================================
@@ -7734,8 +7686,120 @@ function createMockFastifyReply() {
         "Attribute percentage should have a value between 0 and 100",
   );
 }
-// ###########################
 
+// ======================================================
+// VALIDATION PRECEDENCE - PROPERTY ORDER INDEPENDENT
+// ======================================================
+
+let customValidatorExecuted = false;
+
+const precedenceResultA = perfectPayload(
+  {
+    value: 123,
+  },
+  {
+    value: {
+      customValidator: () => {
+        customValidatorExecuted = true;
+        return false;
+      },
+      regex: /^[A-Z]+$/,
+      type: "string",
+    },
+  },
+);
+
+check(
+  "type validation runs before regex and customValidator regardless of property order",
+  precedenceResultA.valid === false &&
+    precedenceResultA.errors?.[0]?.code === "INVALID_TYPE" &&
+    customValidatorExecuted === false,
+);
+
+// ======================================================
+// VALIDATION PRECEDENCE - CUSTOM VALIDATOR LAST
+// ======================================================
+
+customValidatorExecuted = false;
+
+const precedenceResultB = perfectPayload(
+  {
+    value: "abc",
+  },
+  {
+    value: {
+      customValidator: () => {
+        customValidatorExecuted = true;
+        return false;
+      },
+      regex: /^[A-Z]+$/,
+      type: "string",
+    },
+  },
+);
+check(
+  "regex failure prevents customValidator from running",
+  precedenceResultB.valid === false &&
+    precedenceResultB.errors?.[0]?.code === "REGEX_MISMATCH" &&
+    customValidatorExecuted === false,
+);
+
+// ======================================================
+// VALIDATION PRECEDENCE - MANDATORY BEFORE TRANSFORM
+// ======================================================
+
+let transformExecuted = false;
+
+const precedenceResultC = perfectPayload(
+  {
+    value: "",
+  },
+  {
+    value: {
+      mandatory: true,
+      transform: (value) => {
+        transformExecuted = true;
+        return Number(value);
+      },
+      type: "number",
+    },
+  },
+);
+
+check(
+  "mandatory failure prevents transform from running",
+  precedenceResultC.valid === false &&
+    precedenceResultC.errors?.[0]?.code === "REQUIRED" &&
+    transformExecuted === false,
+);
+
+// ======================================================
+// VALIDATION PRECEDENCE - TYPE BEFORE STRUCTURAL RULES
+// ======================================================
+
+const precedenceResultD = perfectPayload(
+  {
+    value: "not-an-object",
+  },
+  {
+    value: {
+      objectAttr: {
+        name: {
+          mandatory: true,
+          type: "string",
+        },
+      },
+      type: "object",
+    },
+  },
+);
+
+check(
+  "type validation runs before objectAttr regardless of property order",
+  precedenceResultD.valid === false &&
+    precedenceResultD.errors?.[0]?.code === "INVALID_TYPE",
+);
+// ###########################
 // ========================================================
 // FINAL RESULT
 // ========================================================
