@@ -1,233 +1,55 @@
-# ================================================================
-# PERFECT-PAYLOAD — FULLY AUTOMATIC NPM PUBLISHING
-# ================================================================
-#
-# ONE-TIME NPM CONFIGURATION
-# --------------------------
-#
-# 1. Open:
-#    npmjs.com
-#      → perfect-payload
-#      → Settings
-#      → Add Trusted Publishers(npm publish)
-#
-# 2. Your current trusted publisher may only allow:
-#
-#       npm stage publish
-#
-#    Existing trusted-publisher configurations cannot currently be edited.
-#    Delete the existing trusted publisher and create it again.
-#
-# 3. Create the GitHub Actions Trusted Publisher with:
-#
-#       Organization/User:
-#         kiranpoojary
-#
-#       Repository:
-#         perfect-payload
-#
-#       Workflow filename:
-#         publish.yml
-#
-#       Environment:
-#         LEAVE EMPTY
-#
-#       Allowed actions:
-#         ✅ npm publish
-#
-#       npm stage publish:
-#         optional — not needed by this workflow
-#
-#       npm dist-tag:
-#         not required
-#
-#    IMPORTANT:
-#    The workflow filename entered on npm must exactly match this file:
-#
-#       .github/workflows/publish.yml
-#
-#
-# 4. Keep npm account 2FA ENABLED.
-#
-#    You are NOT disabling account security.
-#
-#    Trusted Publishing authenticates GitHub Actions through short-lived
-#    OIDC credentials, so npm publish from this trusted workflow does not
-#    require you to enter an OTP.
-#
-#
-# 5. Recommended npm package publishing security:
-#
-#       Require two-factor authentication and disallow tokens
-#
-#    This prevents normal write tokens from publishing.
-#    Trusted Publisher / OIDC can still publish.
-#
-#
-# 6. package.json repository.url must point to the same GitHub repository:
-#
-#       https://github.com/kiranpoojary/perfect-payload.git
-#
-#    Example:
-#
-#    "repository": {
-#      "type": "git",
-#      "url": "git+https://github.com/kiranpoojary/perfect-payload.git"
-#    }
-#
-#
-# ================================================================
-# RELEASE FLOW
-# ================================================================
-#
-# BETA
-# ----
-#
-# package.json:
-#
-#   "version": "2.0.1-beta.1"
-#
-# Create/push tag:
-#
-#   git tag v2.0.1-beta.1
-#   git push origin v2.0.1-beta.1
-#
-# GitHub Actions automatically runs:
-#
-#   npm ci
-#   npm run build
-#   npm run test:types
-#   node test.js
-#   npm pack --dry-run
-#   npm publish --tag beta
-#
-# Result:
-#
-#   perfect-payload@2.0.1-beta.1
-#
-# npm dist-tag:
-#
-#   beta -> 2.0.1-beta.1
-#
-# Consumers can install:
-#
-#   npm install perfect-payload@beta
-#
-# Normal:
-#
-#   npm install perfect-payload
-#
-# still installs the current stable/latest version.
-#
-#
-# PRODUCTION
-# ----------
-#
-# package.json:
-#
-#   "version": "2.0.1"
-#
-# Create/push tag:
-#
-#   git tag v2.0.1
-#   git push origin v2.0.1
-#
-# GitHub Actions automatically runs:
-#
-#   npm ci
-#   npm run build
-#   npm run test:types
-#   node test.js
-#   npm pack --dry-run
-#   npm publish
-#
-# Result:
-#
-#   perfect-payload@2.0.1
-#
-# npm dist-tag:
-#
-#   latest -> 2.0.1
-#
-#
-# ================================================================
-# IMPORTANT SAFETY CHECKS
-# ================================================================
-#
-# This workflow refuses to publish when:
-#
-#   Tag:
-#     v2.0.1
-#
-#   package.json:
-#     2.0.2
-#
-# It also rejects unsupported versions such as:
-#
-#   2.0.1-alpha.1
-#   2.0.1-rc.1
-#   random-version
-#
-# For now we intentionally support only:
-#
-#   X.Y.Z
-#   X.Y.Z-beta.N
-#
-# This can be expanded later if you introduce RC releases.
-#
-#
-# ================================================================
-# WORKFLOW
-# ================================================================
-
 name: Publish npm package
 
 on:
-  push:
-    tags:
-      - "v*"
+  release:
+    types:
+      - published
+
+concurrency:
+  group: npm-publish-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   # ==============================================================
-  # VALIDATE RELEASE
+  # 1. VALIDATE RELEASE
   # ==============================================================
 
   validate:
-    name: Validate Release
+    name: 1 · Validate Release
     runs-on: ubuntu-latest
 
     outputs:
       name: ${{ steps.release.outputs.name }}
       version: ${{ steps.release.outputs.version }}
+      tag: ${{ steps.release.outputs.tag }}
       channel: ${{ steps.release.outputs.channel }}
 
     steps:
-      - name: Checkout repository
+      - name: Checkout release tag
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
           package-manager-cache: false
 
-      - name: Setup npm
-        run: npm install --global npm@11.19.1
-
-      - name: Validate tag and package version
+      - name: Validate release
         id: release
         shell: bash
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          IS_PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
           set -euo pipefail
 
           NAME=$(node -p "require('./package.json').name")
           VERSION=$(node -p "require('./package.json').version")
-          TAG="$GITHUB_REF_NAME"
           EXPECTED_TAG="v$VERSION"
 
           echo "======================================"
@@ -236,104 +58,71 @@ jobs:
           echo "Package:         $NAME"
           echo "Package version: $VERSION"
           echo "Git tag:         $TAG"
-          echo "Expected tag:    $EXPECTED_TAG"
+          echo "Pre-release:     $IS_PRERELEASE"
           echo "======================================"
-
-          # ------------------------------------------------------
-          # Tag must exactly match package.json version.
-          #
-          # package.json: 2.0.1-beta.1
-          # tag:          v2.0.1-beta.1
-          #
-          # package.json: 2.0.1
-          # tag:          v2.0.1
-          # ------------------------------------------------------
 
           if [[ "$TAG" != "$EXPECTED_TAG" ]]; then
             echo "::error::Git tag does not match package.json version."
-            echo "::error::Tag: $TAG"
+            echo "::error::Tag:      $TAG"
             echo "::error::Expected: $EXPECTED_TAG"
             exit 1
           fi
 
-          # ------------------------------------------------------
-          # Determine release channel.
-          #
-          # Supported:
-          #
-          #   2.0.1
-          #   2.0.1-beta.1
-          #   2.0.1-beta.2
-          #   2.1.0-beta.1
-          #
-          # ------------------------------------------------------
-
           if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+-beta\.[0-9]+$ ]]; then
-
             CHANNEL="beta"
 
-          elif [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            if [[ "$IS_PRERELEASE" != "true" ]]; then
+              echo "::error::Beta versions must be published as GitHub pre-releases."
+              exit 1
+            fi
 
+          elif [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             CHANNEL="latest"
 
-          else
+            if [[ "$IS_PRERELEASE" == "true" ]]; then
+              echo "::error::Stable versions must not be marked as pre-release."
+              exit 1
+            fi
 
+          else
             echo "::error::Unsupported version format: $VERSION"
             echo "::error::Expected X.Y.Z or X.Y.Z-beta.N"
             exit 1
-
           fi
 
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
 
-          echo ""
-          echo "Release validated."
-          echo "Package: $NAME"
-          echo "Version: $VERSION"
-          echo "Channel: $CHANNEL"
+          echo "Release validated: $NAME@$VERSION → $CHANNEL"
 
   # ==============================================================
-  # VERIFY + BUILD + PUBLISH
+  # 2. BUILD + TEST
   # ==============================================================
 
-  publish:
-    name: Publish to npm
+  build-test:
+    name: 2 · Build & Test
     needs: validate
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout release tag
         uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
           package-manager-cache: false
 
-      # Trusted Publishing requires a modern npm CLI.
-      # No NPM_TOKEN is used.
       - name: Setup npm
         run: npm install --global npm@11.19.1
 
-      - name: Verify Node and npm
-        run: |
-          node --version
-          npm --version
-
-      # ----------------------------------------------------------
-      # Install
-      # ----------------------------------------------------------
-
       - name: Install dependencies
         run: npm ci
-
-      # ----------------------------------------------------------
-      # Build from a clean dist
-      # ----------------------------------------------------------
 
       - name: Clean dist
         run: rm -rf dist
@@ -341,37 +130,13 @@ jobs:
       - name: Build package
         run: npm run build
 
-      # ----------------------------------------------------------
-      # Type verification
-      # ----------------------------------------------------------
-
-      - name: Run TypeScript consumer tests
+      - name: Run TypeScript tests
         run: npm run test:types
-
-      # ----------------------------------------------------------
-      # Existing v2 regression suite
-      #
-      # Once v2.1.0 Jest migration is complete this can become:
-      #
-      #   npm run verify
-      #
-      # ----------------------------------------------------------
 
       - name: Run regression tests
         run: node test.js
 
-      # ----------------------------------------------------------
-      # Make sure build actually generated publishable files.
-      #
-      # Prevents another release containing only:
-      #
-      #   LICENSE
-      #   README.md
-      #   package.json
-      #
-      # ----------------------------------------------------------
-
-      - name: Verify dist output
+      - name: Verify required dist files
         shell: bash
         run: |
           set -euo pipefail
@@ -392,97 +157,148 @@ jobs:
             fi
           done
 
-          echo "Required dist files are present."
+      - name: Upload tested dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ needs.validate.outputs.version }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 1
 
-      # ----------------------------------------------------------
-      # Show exactly what npm will publish
-      # ----------------------------------------------------------
+  # ==============================================================
+  # 3. VERIFY PACKAGE
+  # ==============================================================
 
-      - name: Verify npm package contents
+  verify-package:
+    name: 3 · Verify Package
+    needs:
+      - validate
+      - build-test
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Setup npm
+        run: npm install --global npm@11.19.1
+
+      - name: Download tested dist
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-${{ needs.validate.outputs.version }}
+          path: dist
+
+      - name: Show package files
+        run: find dist -maxdepth 2 -type f -print
+
+      - name: Verify npm package
         run: npm pack --dry-run
 
-      # ----------------------------------------------------------
-      # Prevent accidental duplicate publishing
-      # ----------------------------------------------------------
+  # ==============================================================
+  # 4. CHECK REGISTRY
+  # ==============================================================
 
-      - name: Check version does not already exist
+  registry-check:
+    name: 4 · Check Registry
+    needs:
+      - validate
+      - verify-package
+
+    runs-on: ubuntu-latest
+
+    outputs:
+      already_published: ${{ steps.check.outputs.already_published }}
+
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Check npm version
+        id: check
         shell: bash
+        env:
+          NAME: ${{ needs.validate.outputs.name }}
+          VERSION: ${{ needs.validate.outputs.version }}
         run: |
           set -euo pipefail
 
-          NAME="${{ needs.validate.outputs.name }}"
-          VERSION="${{ needs.validate.outputs.version }}"
-
-          echo "Checking npm registry for $NAME@$VERSION..."
-
           if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
             echo "::error::$NAME@$VERSION is already published."
-            echo "::error::npm versions are immutable. Use a new version."
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
             exit 1
           fi
 
-          echo "$NAME@$VERSION is available for publishing."
+          echo "$NAME@$VERSION is available."
+          echo "already_published=false" >> "$GITHUB_OUTPUT"
 
-      # ----------------------------------------------------------
-      # Release information
-      # ----------------------------------------------------------
+  # ==============================================================
+  # 5. PUBLISH
+  # ==============================================================
 
-      - name: Show release information
-        shell: bash
-        run: |
-          echo "======================================"
-          echo "NPM RELEASE"
-          echo "======================================"
-          echo "Package: ${{ needs.validate.outputs.name }}"
-          echo "Version: ${{ needs.validate.outputs.version }}"
-          echo "Channel: ${{ needs.validate.outputs.channel }}"
-          echo "Tag:     $GITHUB_REF_NAME"
-          echo "======================================"
+  publish:
+    name: 5 · Publish npm
+    needs:
+      - validate
+      - build-test
+      - registry-check
 
-      # ----------------------------------------------------------
-      # BETA
-      #
-      # v2.0.1-beta.1
-      #
-      # becomes:
-      #
-      # npm publish --tag beta
-      #
-      # No staging.
-      # No npm approval.
-      # No OTP.
-      # ----------------------------------------------------------
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Setup npm
+        run: npm install --global npm@11.19.1
+
+      - name: Download tested dist
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-${{ needs.validate.outputs.version }}
+          path: dist
 
       - name: Publish beta
         if: needs.validate.outputs.channel == 'beta'
         run: npm publish --tag beta
-
-      # ----------------------------------------------------------
-      # STABLE
-      #
-      # v2.0.1
-      #
-      # becomes:
-      #
-      # npm publish
-      #
-      # which uses npm's "latest" dist-tag.
-      #
-      # No staging.
-      # No npm approval.
-      # No OTP.
-      # ----------------------------------------------------------
 
       - name: Publish stable
         if: needs.validate.outputs.channel == 'latest'
         run: npm publish
 
   # ==============================================================
-  # COMPLETION
+  # 6. VERIFY PUBLISHED
   # ==============================================================
 
-  complete:
-    name: npm Publish Complete
+  verify-published:
+    name: 6 · Verify Published
     needs:
       - validate
       - publish
@@ -490,27 +306,50 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Release completed
-        shell: bash
-        run: |
-          echo "======================================"
-          echo "NPM PUBLISH COMPLETED"
-          echo "======================================"
-          echo "Package: ${{ needs.validate.outputs.name }}"
-          echo "Version: ${{ needs.validate.outputs.version }}"
-          echo "Channel: ${{ needs.validate.outputs.channel }}"
-          echo ""
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
 
-          if [[ "${{ needs.validate.outputs.channel }}" == "beta" ]]; then
-            echo "Published as npm beta."
-            echo ""
-            echo "Install:"
-            echo "npm install ${{ needs.validate.outputs.name }}@beta"
-          else
-            echo "Published as npm latest."
-            echo ""
-            echo "Install:"
-            echo "npm install ${{ needs.validate.outputs.name }}"
+      - name: Verify version
+        shell: bash
+        env:
+          NAME: ${{ needs.validate.outputs.name }}
+          VERSION: ${{ needs.validate.outputs.version }}
+          CHANNEL: ${{ needs.validate.outputs.channel }}
+        run: |
+          set -euo pipefail
+
+          FOUND=""
+
+          for ATTEMPT in 1 2 3 4 5 6; do
+            FOUND=$(npm view "$NAME@$VERSION" version 2>/dev/null || true)
+
+            if [[ "$FOUND" == "$VERSION" ]]; then
+              break
+            fi
+
+            echo "Waiting for npm registry... attempt $ATTEMPT"
+            sleep 10
+          done
+
+          if [[ "$FOUND" != "$VERSION" ]]; then
+            echo "::error::$NAME@$VERSION is not visible on npm."
+            exit 1
           fi
 
+          DIST_TAG=$(npm view "$NAME" "dist-tags.$CHANNEL" 2>/dev/null || true)
+
+          if [[ "$DIST_TAG" != "$VERSION" ]]; then
+            echo "::error::$CHANNEL points to $DIST_TAG instead of $VERSION"
+            exit 1
+          fi
+
+          echo "======================================"
+          echo "PUBLISH VERIFIED"
+          echo "======================================"
+          echo "$NAME@$VERSION"
+          echo "$CHANNEL → $VERSION"
           echo "======================================"
