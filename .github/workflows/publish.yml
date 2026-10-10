@@ -257,6 +257,9 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    environment:
+      name: perfect-payload-publisher
+
     permissions:
       contents: read
       id-token: write
