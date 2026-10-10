@@ -187,7 +187,6 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
           package-manager-cache: false
 
       - name: Setup npm
@@ -225,7 +224,6 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
           package-manager-cache: false
 
       - name: Check npm version
@@ -273,7 +271,6 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
           package-manager-cache: false
 
       - name: Setup npm
@@ -287,18 +284,18 @@ jobs:
 
       - name: Publish beta
         if: needs.validate.outputs.channel == 'beta'
-        run: npm publish --tag beta
+        run: npm publish --tag beta --provenance
 
       - name: Publish stable
         if: needs.validate.outputs.channel == 'latest'
-        run: npm publish
+        run: npm publish --provenance
 
   # ==============================================================
-  # 6. VERIFY PUBLISHED
+  # 6. VERIFY PUBLISH
   # ==============================================================
 
-  verify-published:
-    name: 6 · Verify Published
+  verify-publish:
+    name: 6 · Verify Publish
     needs:
       - validate
       - publish
@@ -307,10 +304,10 @@ jobs:
 
     steps:
       - name: Setup Node.js
+        # registry-url removed to avoid overriding OIDC configurations
         uses: actions/setup-node@v7
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
           package-manager-cache: false
 
       - name: Verify version
