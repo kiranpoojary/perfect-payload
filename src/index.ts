@@ -1630,35 +1630,38 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
           break;
         }
         case "range": {
-          const range = attributeRules.range;
+          const rangeMatch = String(attributeRules.range).match(
+            /^\s*([+-]?\d+(?:\.\d+)?)\s*-\s*([+-]?\d+(?:\.\d+)?)\s*$/,
+          );
 
-          if (addNextError) {
-            if (attributeValue == null && nullAllowed) {
-              addNextError = true;
-            } else if (!isNumber(attributeValue)) {
-              addStructuredError(
-                rowErrors,
-                attributePath,
-                "INVALID_TYPE",
-                `Invalid type for attribute ${attributePath}, required number value`,
-              );
+          if (!rangeMatch) {
+            throw new Error(
+              `perfect-payload:- invalid range format for attribute ${attributePath}`,
+            );
+          }
 
-              addNextError = false;
-            } else if (range !== undefined) {
-              const [min, max] = range.split("-");
+          const min = Number(rangeMatch[1]);
+          const max = Number(rangeMatch[2]);
 
-              if (+attributeValue < +min || +attributeValue > +max) {
-                addStructuredError(
-                  rowErrors,
-                  attributePath,
-                  "OUT_OF_RANGE",
-                  attributeRules?.["rangeError"] ||
-                    `Attribute ${attributePath} should have a value between ${min} and ${max}`,
-                );
+          if (min > max) {
+            throw new Error(
+              `perfect-payload:- range minimum cannot be greater than maximum for attribute ${attributePath}`,
+            );
+          }
 
-                addNextError = false;
-              }
-            }
+          if (
+            typeof attributeValue === "number" &&
+            (attributeValue < min || attributeValue > max)
+          ) {
+            addStructuredError(
+              rowErrors,
+              attributePath,
+              "OUT_OF_RANGE",
+              attributeRules?.["rangeError"] ||
+                `Attribute ${attributePath} should have a value between ${min} and ${max}`,
+            );
+
+            addNextError = false;
           }
 
           break;

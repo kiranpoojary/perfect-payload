@@ -7800,9 +7800,147 @@ check(
     precedenceResultD.errors?.[0]?.code === "INVALID_TYPE",
 );
 // ###########################
-// ========================================================
-// FINAL RESULT
-// ========================================================
+
+// ============================================================
+// range — signed and decimal boundaries
+// ============================================================
+
+const negativeRangeResult = perfectPayload(
+  {
+    temperature: -10,
+  },
+  {
+    temperature: {
+      type: "number",
+      range: "-20-100",
+    },
+  },
+);
+
+check(
+  "range supports negative minimum",
+  negativeRangeResult.valid === true &&
+    negativeRangeResult.validatedPayload.temperature === -10,
+);
+
+const negativeRangeLowerFailure = perfectPayload(
+  {
+    temperature: -21,
+  },
+  {
+    temperature: {
+      type: "number",
+      range: "-20-100",
+    },
+  },
+);
+
+check(
+  "range rejects value below negative minimum",
+  negativeRangeLowerFailure.valid === false &&
+    negativeRangeLowerFailure.errors?.[0]?.code === "OUT_OF_RANGE",
+);
+
+const bothNegativeRangeResult = perfectPayload(
+  {
+    temperature: -10,
+  },
+  {
+    temperature: {
+      type: "number",
+      range: "-20--1",
+    },
+  },
+);
+
+check(
+  "range supports two negative boundaries",
+  bothNegativeRangeResult.valid === true,
+);
+
+const positiveSignRangeResult = perfectPayload(
+  {
+    temperature: 50,
+  },
+  {
+    temperature: {
+      type: "number",
+      range: "-20-+100",
+    },
+  },
+);
+
+check(
+  "range supports explicit positive boundary",
+  positiveSignRangeResult.valid === true,
+);
+
+const decimalRangeResult = perfectPayload(
+  {
+    temperature: -10.25,
+  },
+  {
+    temperature: {
+      type: "number",
+      range: "-20.5-10.5",
+    },
+  },
+);
+
+check(
+  "range supports signed decimal boundaries",
+  decimalRangeResult.valid === true,
+);
+
+check(
+  "range rejects malformed format",
+  (() => {
+    try {
+      perfectPayload(
+        { value: 10 },
+        {
+          value: {
+            type: "number",
+            range: "10-",
+          },
+        },
+      );
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof Error &&
+        error.message.includes("invalid range format for attribute value")
+      );
+    }
+  })(),
+);
+
+check(
+  "range rejects reversed boundaries",
+  (() => {
+    try {
+      perfectPayload(
+        { value: 10 },
+        {
+          value: {
+            type: "number",
+            range: "100--20",
+          },
+        },
+      );
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof Error &&
+        error.message.includes(
+          "range minimum cannot be greater than maximum for attribute value",
+        )
+      );
+    }
+  })(),
+);
 
 console.log("========================================================");
 
