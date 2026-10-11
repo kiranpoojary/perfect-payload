@@ -911,7 +911,12 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
     const attrExist = Object.keys(data ?? {}).includes(attributeName);
 
     const mandatoryValidationFailed =
-      isMandatoryField && (!attrExist || attributeValue === "");
+      isMandatoryField &&
+      (!attrExist ||
+        attributeValue === "" ||
+        (attributeRules?.trim === true &&
+          typeof attributeValue === "string" &&
+          attributeValue.trim() === ""));
 
     if (mandatoryValidationFailed) {
       addNextError = false;
@@ -1629,44 +1634,12 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
 
           break;
         }
-        // case "range": {
-        //   const rangeMatch = String(attributeRules.range).match(
-        //     /^\s*([+-]?\d+(?:\.\d+)?)\s*-\s*([+-]?\d+(?:\.\d+)?)\s*$/,
-        //   );
 
-        //   if (!rangeMatch) {
-        //     throw new Error(
-        //       `perfect-payload:- invalid range format for attribute ${attributePath}`,
-        //     );
-        //   }
-
-        //   const min = Number(rangeMatch[1]);
-        //   const max = Number(rangeMatch[2]);
-
-        //   if (min > max) {
-        //     throw new Error(
-        //       `perfect-payload:- range minimum cannot be greater than maximum for attribute ${attributePath}`,
-        //     );
-        //   }
-
-        //   if (
-        //     typeof attributeValue === "number" &&
-        //     (attributeValue < min || attributeValue > max)
-        //   ) {
-        //     addStructuredError(
-        //       rowErrors,
-        //       attributePath,
-        //       "OUT_OF_RANGE",
-        //       attributeRules?.["rangeError"] ||
-        //         `Attribute ${attributePath} should have a value between ${min} and ${max}`,
-        //     );
-
-        //     addNextError = false;
-        //   }
-
-        //   break;
-        // }
         case "range": {
+          if (!addNextError) {
+            break;
+          }
+
           const rangeValue = String(attributeRules.range);
 
           const colonRangeMatch = rangeValue.match(
@@ -1691,15 +1664,46 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
           const min = Math.min(firstBoundary, secondBoundary);
           const max = Math.max(firstBoundary, secondBoundary);
 
-          if (
-            typeof attributeValue === "number" &&
-            (attributeValue < min || attributeValue > max)
-          ) {
+          let rangeComparableValue: number;
+
+          if (typeof attributeValue === "number") {
+            rangeComparableValue = attributeValue;
+          } else if (typeof attributeValue === "string") {
+            const trimmedValue = attributeValue.trim();
+
+            if (trimmedValue === "" || !Number.isFinite(Number(trimmedValue))) {
+              addStructuredError(
+                rowErrors,
+                attributePath,
+                "OUT_OF_RANGE",
+                attributeRules.rangeError ??
+                  `Attribute ${attributePath} should have a numeric value between ${min} and ${max}`,
+              );
+
+              addNextError = false;
+              break;
+            }
+
+            rangeComparableValue = Number(trimmedValue);
+          } else {
             addStructuredError(
               rowErrors,
               attributePath,
               "OUT_OF_RANGE",
-              attributeRules?.["rangeError"] ||
+              attributeRules.rangeError ??
+                `Attribute ${attributePath} should have a numeric value between ${min} and ${max}`,
+            );
+
+            addNextError = false;
+            break;
+          }
+
+          if (rangeComparableValue < min || rangeComparableValue > max) {
+            addStructuredError(
+              rowErrors,
+              attributePath,
+              "OUT_OF_RANGE",
+              attributeRules.rangeError ??
                 `Attribute ${attributePath} should have a value between ${min} and ${max}`,
             );
 

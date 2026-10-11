@@ -7799,7 +7799,29 @@ check(
   precedenceResultD.valid === false &&
     precedenceResultD.errors?.[0]?.code === "INVALID_TYPE",
 );
-// ###########################
+
+// ============================================================
+// range — type failure
+// ============================================================
+
+const rangeTypeFailure = perfectPayload(
+  {
+    mark: "a",
+  },
+  {
+    mark: {
+      type: "number",
+      range: "-20:100",
+    },
+  },
+);
+
+check(
+  "type failure prevents range validation",
+  rangeTypeFailure.valid === false &&
+    rangeTypeFailure.errors?.length === 1 &&
+    rangeTypeFailure.errors?.[0]?.code === "INVALID_TYPE",
+);
 
 // ============================================================
 // range — signed and decimal boundaries
@@ -8039,6 +8061,93 @@ check(
   descendingMixedRange.valid === true,
 );
 
+// ###########################
+
+// ============================================================
+// range — number and numeric-string values
+// ============================================================
+
+const rangeNumberValue = perfectPayload(
+  {
+    value: -22,
+  },
+  {
+    value: {
+      type: "number",
+      range: "-100:100",
+    },
+  },
+);
+
+check("range validates numeric values", rangeNumberValue.valid === true);
+
+const rangeStringValue = perfectPayload(
+  {
+    value: "-22",
+  },
+  {
+    value: {
+      type: "string",
+      range: "-100:100",
+    },
+  },
+);
+
+check("range validates numeric string values", rangeStringValue.valid === true);
+
+const rangeStringBelowMinimum = perfectPayload(
+  {
+    value: "-101",
+  },
+  {
+    value: {
+      type: "string",
+      range: "-100:100",
+    },
+  },
+);
+
+check(
+  "range rejects numeric string below minimum",
+  rangeStringBelowMinimum.valid === false &&
+    rangeStringBelowMinimum.errors?.[0]?.code === "OUT_OF_RANGE",
+);
+
+const rangeStringAboveMaximum = perfectPayload(
+  {
+    value: "101",
+  },
+  {
+    value: {
+      type: "string",
+      range: "-100:100",
+    },
+  },
+);
+
+check(
+  "range rejects numeric string above maximum",
+  rangeStringAboveMaximum.valid === false &&
+    rangeStringAboveMaximum.errors?.[0]?.code === "OUT_OF_RANGE",
+);
+
+const rangeNonNumericString = perfectPayload(
+  {
+    value: "abc",
+  },
+  {
+    value: {
+      type: "string",
+      range: "-100:100",
+    },
+  },
+);
+
+check(
+  "range rejects non-numeric string values",
+  rangeNonNumericString.valid === false &&
+    rangeNonNumericString.errors?.[0]?.code === "OUT_OF_RANGE",
+);
 // ========================================================
 // FINAL RESULT
 // ========================================================
