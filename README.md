@@ -1405,18 +1405,58 @@ const rules = {
 
 ### `range`
 
-Defines the allowed numeric range. Default: `Not applied when omitted.`
+Defines the allowed numeric range.
 
-Example:
+Default: `Not applied when omitted.`
 
 ```js
 const rules = {
   marks: {
     type: "number",
-    range: "0-100",
+    range: "-20:100",
   },
 };
 ```
+
+Range boundaries are order-independent. For example, these are equivalent:
+
+```text
+-100:100
+100:-100
+```
+
+`range` supports both number values and numeric string values.
+
+```js
+const payload = {
+  marks: "-22",
+};
+
+const rules = {
+  marks: {
+    type: "string",
+    range: "-100:100",
+  },
+};
+```
+
+Numeric strings are converted only for range comparison. The original value type is preserved in `validatedPayload`.
+
+```js
+validatedPayload.marks;
+// "-22"
+```
+
+#### Legacy `-` separator
+
+The previous `-` separator remains supported for backward compatibility:
+
+```text
+0-100
+-20-100
+```
+
+Support for the legacy `-` separator is planned to be removed after **March 31, 2027**.
 
 ## Error code: `OUT_OF_RANGE`
 
