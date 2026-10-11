@@ -7916,31 +7916,132 @@ check(
   })(),
 );
 
-check(
-  "range rejects reversed boundaries",
-  (() => {
-    try {
-      perfectPayload(
-        { value: 10 },
-        {
-          value: {
-            type: "number",
-            range: "100--20",
-          },
-        },
-      );
-
-      return false;
-    } catch (error) {
-      return (
-        error instanceof Error &&
-        error.message.includes(
-          "range minimum cannot be greater than maximum for attribute value",
-        )
-      );
-    }
-  })(),
+const reversedLegacyRangeResult = perfectPayload(
+  {
+    value: 10,
+  },
+  {
+    value: {
+      type: "number",
+      range: "100--20",
+    },
+  },
 );
+
+check(
+  "range supports reversed legacy boundaries",
+  reversedLegacyRangeResult.valid === true,
+);
+
+// ============================================================
+// range — boundary order independence
+// ============================================================
+
+const ascendingPositiveRange = perfectPayload(
+  {
+    value: 50,
+  },
+  {
+    value: {
+      type: "number",
+      range: "20:100",
+    },
+  },
+);
+
+check(
+  "range supports ascending positive boundaries",
+  ascendingPositiveRange.valid === true,
+);
+
+const descendingPositiveRange = perfectPayload(
+  {
+    value: 50,
+  },
+  {
+    value: {
+      type: "number",
+      range: "100:20",
+    },
+  },
+);
+
+check(
+  "range supports descending positive boundaries",
+  descendingPositiveRange.valid === true,
+);
+
+const ascendingNegativeRange = perfectPayload(
+  {
+    value: -50,
+  },
+  {
+    value: {
+      type: "number",
+      range: "-100:-20",
+    },
+  },
+);
+
+check(
+  "range supports ascending negative boundaries",
+  ascendingNegativeRange.valid === true,
+);
+
+const descendingNegativeRange = perfectPayload(
+  {
+    value: -50,
+  },
+  {
+    value: {
+      type: "number",
+      range: "-20:-100",
+    },
+  },
+);
+
+check(
+  "range supports descending negative boundaries",
+  descendingNegativeRange.valid === true,
+);
+
+const ascendingMixedRange = perfectPayload(
+  {
+    value: 0,
+  },
+  {
+    value: {
+      type: "number",
+      range: "-20:100",
+    },
+  },
+);
+
+check(
+  "range supports ascending mixed-sign boundaries",
+  ascendingMixedRange.valid === true,
+);
+
+const descendingMixedRange = perfectPayload(
+  {
+    value: 0,
+  },
+  {
+    value: {
+      type: "number",
+      range: "100:-20",
+    },
+  },
+);
+
+check(
+  "range supports descending mixed-sign boundaries",
+  descendingMixedRange.valid === true,
+);
+
+// ========================================================
+// FINAL RESULT
+// ========================================================
 
 console.log("========================================================");
 
