@@ -1035,8 +1035,11 @@ try {
   );
 } catch (error) {
   nonFunctionValidatorThrows =
+    error instanceof TypeError &&
+    error.name === "TypeError [ERR_INVALID_CUSTOM_VALIDATOR]" &&
+    error.code === "ERR_INVALID_CUSTOM_VALIDATOR" &&
     error.message ===
-    "perfect-payload:- customValidator must be a function for attribute username";
+      'customValidator must be a function for attribute "username"';
 }
 
 check(
@@ -1062,8 +1065,11 @@ try {
   );
 } catch (error) {
   asyncValidatorThrows =
+    error instanceof TypeError &&
+    error.name === "TypeError [ERR_ASYNC_CUSTOM_VALIDATOR]" &&
+    error.code === "ERR_ASYNC_CUSTOM_VALIDATOR" &&
     error.message ===
-    "perfect-payload:- customValidator must be synchronous for attribute username";
+      'customValidator must be synchronous for attribute "username"';
 }
 
 check(
@@ -1776,8 +1782,10 @@ try {
   );
 } catch (error) {
   nonFunctionTransformThrows =
-    error.message ===
-    "perfect-payload:- transform must be a function for attribute username";
+    error instanceof TypeError &&
+    error.name === "TypeError [ERR_INVALID_TRANSFORM]" &&
+    error.code === "ERR_INVALID_TRANSFORM" &&
+    error.message === 'transform must be a function for attribute "username"';
 }
 
 check(
@@ -1808,8 +1816,10 @@ try {
   );
 } catch (error) {
   asyncTransformThrows =
-    error.message ===
-    "perfect-payload:- transform must be synchronous for attribute username";
+    error instanceof TypeError &&
+    error.name === "TypeError [ERR_ASYNC_TRANSFORM]" &&
+    error.code === "ERR_ASYNC_TRANSFORM" &&
+    error.message === 'transform must be synchronous for attribute "username"';
 }
 
 check(
@@ -2017,8 +2027,11 @@ try {
   );
 } catch (error) {
   transformUndefinedThrows =
+    error instanceof TypeError &&
+    error.name === "TypeError [ERR_UNDEFINED_TRANSFORM_RESULT]" &&
+    error.code === "ERR_UNDEFINED_TRANSFORM_RESULT" &&
     error.message ===
-    "perfect-payload:- transform must not return undefined for attribute username";
+      'transform must not return undefined for attribute "username"';
 }
 
 check(
@@ -2142,8 +2155,11 @@ try {
   );
 } catch (error) {
   nestedCaseConflictThrows =
+    error instanceof TypeError &&
+    error.name === "TypeError [ERR_CONFLICTING_TRANSFORMS]" &&
+    error.code === "ERR_CONFLICTING_TRANSFORMS" &&
     error.message ===
-    "perfect-payload:- lowercase and uppercase cannot both be enabled for attribute profile.username";
+      'lowercase and uppercase cannot both be enabled for attribute "profile.username"';
 }
 
 check(
@@ -2171,8 +2187,11 @@ try {
   );
 } catch (error) {
   arrayCaseConflictThrows =
+    error instanceof TypeError &&
+    error.name === "TypeError [ERR_CONFLICTING_TRANSFORMS]" &&
+    error.code === "ERR_CONFLICTING_TRANSFORMS" &&
     error.message ===
-    "perfect-payload:- lowercase and uppercase cannot both be enabled for attribute names";
+      'lowercase and uppercase cannot both be enabled for attribute "names"';
 }
 
 check(
@@ -3453,8 +3472,11 @@ try {
   );
 } catch (error) {
   transformUndefinedMandatoryThrows =
+    error instanceof TypeError &&
+    error.name === "TypeError [ERR_UNDEFINED_TRANSFORM_RESULT]" &&
+    error.code === "ERR_UNDEFINED_TRANSFORM_RESULT" &&
     error.message ===
-    "perfect-payload:- transform must not return undefined for attribute username";
+      'transform must not return undefined for attribute "username"';
 }
 
 check(
@@ -3488,8 +3510,11 @@ try {
   );
 } catch (error) {
   transformUndefinedBeforeCustomValidatorThrows =
+    error instanceof TypeError &&
+    error.name === "TypeError [ERR_UNDEFINED_TRANSFORM_RESULT]" &&
+    error.code === "ERR_UNDEFINED_TRANSFORM_RESULT" &&
     error.message ===
-    "perfect-payload:- transform must not return undefined for attribute username";
+      'transform must not return undefined for attribute "username"';
 }
 
 check(
@@ -4191,8 +4216,11 @@ try {
   );
 } catch (error) {
   syncApiRejectedAsyncValidator =
+    error instanceof TypeError &&
+    error.name === "TypeError [ERR_ASYNC_CUSTOM_VALIDATOR]" &&
+    error.code === "ERR_ASYNC_CUSTOM_VALIDATOR" &&
     error.message ===
-    "perfect-payload:- customValidator must be synchronous for attribute username";
+      'customValidator must be synchronous for attribute "username"';
 }
 
 check(
@@ -4220,8 +4248,11 @@ try {
   );
 } catch (error) {
   asyncApiRejectedInvalidValidator =
+    error instanceof TypeError &&
+    error.name === "TypeError [ERR_INVALID_CUSTOM_VALIDATOR]" &&
+    error.code === "ERR_INVALID_CUSTOM_VALIDATOR" &&
     error.message ===
-    "perfect-payload:- customValidator must be a function for attribute username";
+      'customValidator must be a function for attribute "username"';
 }
 
 check(
@@ -4959,8 +4990,11 @@ try {
 
 check(
   "v1.8 prettyErrors sync rejects non-boolean option",
-  prettyErrorsSyncConfigError?.message ===
-    "perfect-payload:- prettyErrors must be a boolean",
+  prettyErrorsSyncConfigError instanceof TypeError &&
+    prettyErrorsSyncConfigError.name ===
+      "TypeError [ERR_INVALID_PRETTY_ERRORS]" &&
+    prettyErrorsSyncConfigError.code === "ERR_INVALID_PRETTY_ERRORS" &&
+    prettyErrorsSyncConfigError.message === "prettyErrors must be a boolean",
 );
 
 // --------------------------------------------------
@@ -5066,8 +5100,11 @@ try {
 
 check(
   "v1.8 prettyErrors async rejects non-boolean option",
-  prettyErrorsAsyncConfigError?.message ===
-    "perfect-payload:- prettyErrors must be a boolean",
+  prettyErrorsAsyncConfigError instanceof TypeError &&
+    prettyErrorsAsyncConfigError.name ===
+      "TypeError [ERR_INVALID_PRETTY_ERRORS]" &&
+    prettyErrorsAsyncConfigError.code === "ERR_INVALID_PRETTY_ERRORS" &&
+    prettyErrorsAsyncConfigError.message === "prettyErrors must be a boolean",
 );
 
 // --------------------------------------------------
@@ -7931,8 +7968,10 @@ check(
       return false;
     } catch (error) {
       return (
-        error instanceof Error &&
-        error.message.includes("invalid range format for attribute value")
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_INVALID_RANGE]" &&
+        error.code === "ERR_INVALID_RANGE" &&
+        error.message === 'Invalid range format for attribute "value"'
       );
     }
   })(),
