@@ -8148,6 +8148,377 @@ check(
   rangeNonNumericString.valid === false &&
     rangeNonNumericString.errors?.[0]?.code === "OUT_OF_RANGE",
 );
+
+// #############
+check(
+  "invalid unknownFields throws node-style configuration error",
+  (() => {
+    try {
+      perfectPayload(
+        { name: "Kiran" },
+        {
+          name: {
+            type: "string",
+          },
+        },
+        {
+          unknownFields: "invalid",
+        },
+      );
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_INVALID_UNKNOWN_FIELDS]" &&
+        error.code === "ERR_INVALID_UNKNOWN_FIELDS" &&
+        error.message ===
+          'unknownFields must be one of "strip", "allow", or "reject"'
+      );
+    }
+  })(),
+);
+
+check(
+  "invalid prettyErrors throws node-style configuration error",
+  (() => {
+    try {
+      perfectPayload(
+        { name: "Kiran" },
+        {
+          name: {
+            type: "string",
+          },
+        },
+        {
+          prettyErrors: "true",
+        },
+      );
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_INVALID_PRETTY_ERRORS]" &&
+        error.code === "ERR_INVALID_PRETTY_ERRORS" &&
+        error.message === "prettyErrors must be a boolean"
+      );
+    }
+  })(),
+);
+
+check(
+  "conflicting transforms throw node-style configuration error",
+  (() => {
+    try {
+      perfectPayload(
+        { name: "Kiran" },
+        {
+          name: {
+            type: "string",
+            lowercase: true,
+            uppercase: true,
+          },
+        },
+      );
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_CONFLICTING_TRANSFORMS]" &&
+        error.code === "ERR_CONFLICTING_TRANSFORMS" &&
+        error.message ===
+          'lowercase and uppercase cannot both be enabled for attribute "name"'
+      );
+    }
+  })(),
+);
+
+check(
+  "invalid transform throws node-style configuration error",
+  (() => {
+    try {
+      perfectPayload(
+        { name: "Kiran" },
+        {
+          name: {
+            type: "string",
+            transform: "invalid",
+          },
+        },
+      );
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_INVALID_TRANSFORM]" &&
+        error.code === "ERR_INVALID_TRANSFORM" &&
+        error.message === 'transform must be a function for attribute "name"'
+      );
+    }
+  })(),
+);
+
+check(
+  "async transform throws node-style configuration error",
+  (() => {
+    try {
+      perfectPayload(
+        { name: "Kiran" },
+        {
+          name: {
+            type: "string",
+            transform: async (value) => value,
+          },
+        },
+      );
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_ASYNC_TRANSFORM]" &&
+        error.code === "ERR_ASYNC_TRANSFORM" &&
+        error.message === 'transform must be synchronous for attribute "name"'
+      );
+    }
+  })(),
+);
+
+check(
+  "undefined transform result throws node-style configuration error",
+  (() => {
+    try {
+      perfectPayload(
+        { name: "Kiran" },
+        {
+          name: {
+            type: "string",
+            transform: () => undefined,
+          },
+        },
+      );
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_UNDEFINED_TRANSFORM_RESULT]" &&
+        error.code === "ERR_UNDEFINED_TRANSFORM_RESULT" &&
+        error.message ===
+          'transform must not return undefined for attribute "name"'
+      );
+    }
+  })(),
+);
+
+check(
+  "invalid range throws node-style configuration error",
+  (() => {
+    try {
+      perfectPayload(
+        { mark: 10 },
+        {
+          mark: {
+            type: "number",
+            range: "invalid",
+          },
+        },
+      );
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_INVALID_RANGE]" &&
+        error.code === "ERR_INVALID_RANGE" &&
+        error.message === 'Invalid range format for attribute "mark"'
+      );
+    }
+  })(),
+);
+
+check(
+  "invalid customValidator throws node-style configuration error",
+  (() => {
+    try {
+      perfectPayload(
+        { name: "Kiran" },
+        {
+          name: {
+            type: "string",
+            customValidator: "invalid",
+          },
+        },
+      );
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_INVALID_CUSTOM_VALIDATOR]" &&
+        error.code === "ERR_INVALID_CUSTOM_VALIDATOR" &&
+        error.message ===
+          'customValidator must be a function for attribute "name"'
+      );
+    }
+  })(),
+);
+
+check(
+  "async customValidator in perfectPayload throws node-style configuration error",
+  (() => {
+    try {
+      perfectPayload(
+        { name: "Kiran" },
+        {
+          name: {
+            type: "string",
+            customValidator: async () => true,
+          },
+        },
+      );
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_ASYNC_CUSTOM_VALIDATOR]" &&
+        error.code === "ERR_ASYNC_CUSTOM_VALIDATOR" &&
+        error.message ===
+          'customValidator must be synchronous for attribute "name"'
+      );
+    }
+  })(),
+);
+
+check(
+  "invalid dependency rule throws node-style configuration error",
+  (() => {
+    try {
+      perfectPayload(
+        {
+          minSalary: 10,
+          maxSalary: 20,
+        },
+        {
+          minSalary: {
+            type: "number",
+            dependency: {
+              maxSalary: {
+                setDependencyRule: "invalid",
+              },
+            },
+          },
+          maxSalary: {
+            type: "number",
+          },
+        },
+      );
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_INVALID_DEPENDENCY_RULE]" &&
+        error.code === "ERR_INVALID_DEPENDENCY_RULE" &&
+        error.message ===
+          'setDependencyRule must be a function for dependency "maxSalary"'
+      );
+    }
+  })(),
+);
+
+import { validatePayload as expressValidatePayload } from "./dist/express.js";
+
+check(
+  "invalid framework rule throws node-style configuration error",
+  (() => {
+    try {
+      expressValidatePayload({
+        rule: "invalid",
+      });
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_INVALID_FRAMEWORK_RULE]" &&
+        error.code === "ERR_INVALID_FRAMEWORK_RULE" &&
+        error.message === "framework rule must be an object"
+      );
+    }
+  })(),
+);
+
+check(
+  "unsupported request source throws node-style configuration error",
+  (() => {
+    try {
+      expressValidatePayload({
+        rule: {
+          cookies: {},
+        },
+      });
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_UNSUPPORTED_REQUEST_SOURCE]" &&
+        error.code === "ERR_UNSUPPORTED_REQUEST_SOURCE" &&
+        error.message === 'Unsupported request source "cookies"'
+      );
+    }
+  })(),
+);
+
+check(
+  "invalid request source rule throws node-style configuration error",
+  (() => {
+    try {
+      expressValidatePayload({
+        rule: {
+          body: "invalid",
+        },
+      });
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_INVALID_REQUEST_SOURCE_RULE]" &&
+        error.code === "ERR_INVALID_REQUEST_SOURCE_RULE" &&
+        error.message === 'rule for request source "body" must be an object'
+      );
+    }
+  })(),
+);
+
+check(
+  "invalid framework options throw node-style configuration error",
+  (() => {
+    try {
+      expressValidatePayload({
+        rule: {
+          body: {},
+        },
+        options: "invalid",
+      });
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_INVALID_FRAMEWORK_OPTIONS]" &&
+        error.code === "ERR_INVALID_FRAMEWORK_OPTIONS" &&
+        error.message === "framework options must be an object"
+      );
+    }
+  })(),
+);
 // ========================================================
 // FINAL RESULT
 // ========================================================
@@ -8157,16 +8528,11 @@ console.log("========================================================");
 console.log("\nRegression execution completed.");
 
 console.log("Inspect any ❌ FAIL entries above before proceeding with release");
-//
-//
+
 //
 // ========================================================
 //
-//
-//
 // PRIVACY / SENSITIVE VALUE LEAK TEST
-//
-//
 //
 // ========================================================
 
