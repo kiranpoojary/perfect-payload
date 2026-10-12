@@ -476,7 +476,7 @@ Use:
 
 Validation failures are handled by the hook automatically. Unexpected errors from validators, transformations, or configuration propagate through Fastify's normal error-handling lifecycle.
 
-### Framework-aware error paths
+## Framework-aware error paths
 
 Structured framework validation errors include the request source:
 
@@ -517,7 +517,7 @@ Invalid x-request-id in headers
 
 The framework adapter does not prepend `headers.`, `params.`, `query.`, or `body.` to a custom message.
 
-### `prettyErrors`
+## `prettyErrors`
 
 `prettyErrors` provides a simplified string-error mode. Structured errors remain the default.
 
@@ -533,7 +533,7 @@ With `prettyErrors: true`, the `errors` array contains human-readable message st
 
 Default validation messages do not include submitted payload values. Schema constraints such as allowed enum values, minimums, maximums, and ranges may still appear in validation messages. Custom error messages are controlled by the application and are returned as configured.
 
-### Lightweight framework integrations
+## Lightweight framework integrations
 
 Express and Fastify are **not installed as dependencies of `perfect-payload`**. The framework integrations are thin adapters around the same validation
 
@@ -652,7 +652,7 @@ The arguments are:
 
 The third argument is a single options object. You no longer need to pass separate positional arguments for custom valid and invalid responses. In TypeScript, this object is typed as `ValidationOptions`.
 
-### TypeScript
+## TypeScript
 
 `perfect-payload` ships its TypeScript declarations with the package. No separate `@types/perfect-payload` installation is required.
 
@@ -702,7 +702,7 @@ if (result.valid === true) {
 
 `prettyErrors: true` changes the error collection to strings, while the default structured mode returns objects containing `path`, `code`, and `message`. The runtime package remains the same for JavaScript and TypeScript consumers.
 
-### Options
+## Options
 
 The third argument uses the `ValidationOptions` type in TypeScript.
 
@@ -1091,7 +1091,7 @@ Note: If an inValidPayloadResponse is provided in the options, the system return
 
 `perfectPayload()` supports validation, nested-schema, custom-validation, and transformation rules.
 
-### `mandatory`
+## `mandatory`
 
 Marks a field as required. An empty string is also treated as missing. Default: `false`, the field is not required.
 
@@ -1103,9 +1103,9 @@ const rules = {
 };
 ```
 
-## Error code: `REQUIRED`
+##### Error code: `REQUIRED`
 
-### `allowNull`
+## `allowNull`
 
 Controls whether `null` values are accepted. Default: `true`, `null` values are allowed.
 
@@ -1119,9 +1119,9 @@ const rules = {
 };
 ```
 
-## Error code: `NULL_NOT_ALLOWED`
+##### Error code: `NULL_NOT_ALLOWED`
 
-### `allowEmptyObject`
+## `allowEmptyObject`
 
 Controls whether an empty object `{}` is accepted. Default: `true`, empty objects are allowed.
 
@@ -1136,9 +1136,9 @@ const rules = {
 };
 ```
 
-## Error code: `EMPTY_OBJECT_NOT_ALLOWED`
+##### Error code: `EMPTY_OBJECT_NOT_ALLOWED`
 
-### `allowEmptyArray`
+## `allowEmptyArray`
 
 Controls whether an empty array `[]` is accepted. Default: `true`, empty arrays are allowed.
 
@@ -1153,9 +1153,9 @@ const rules = {
 };
 ```
 
-## Error code: `EMPTY_ARRAY_NOT_ALLOWED`
+##### Error code: `EMPTY_ARRAY_NOT_ALLOWED`
 
-### `minItems`
+## `minItems`
 
 Defines the minimum number of items required in an array. Default: `Not applied when omitted.`
 
@@ -1178,9 +1178,9 @@ An array with fewer than 2 items returns `MIN_ITEMS`.
 }
 ```
 
-## `minItems` is enforced even when `allowEmptyArray: true` is set. For example, `minItems: 2` still rejects `[]`. Error code: `MIN_ITEMS`
+##### `minItems` is enforced even when `allowEmptyArray: true` is set. For example, `minItems: 2` still rejects `[]`. Error code: `MIN_ITEMS`
 
-### `maxItems`
+## `maxItems`
 
 Defines the maximum number of items allowed in an array. Default: `Not applied when omitted`.
 
@@ -1203,9 +1203,11 @@ An array with more than 5 items returns `MAX_ITEMS`.
 }
 ```
 
-## `minItems` and `maxItems` can be used together. Error code: `MAX_ITEMS`
+##### `minItems` and `maxItems` can be used together.
 
-### `type`
+##### Error code: `MAX_ITEMS`
+
+## `type`
 
 Validates the expected data type.
 
@@ -1244,7 +1246,7 @@ const rules = {
 };
 ```
 
-### `enum`
+## `enum`
 
 A specific set of allowed values (supports heterogeneous arrays)
 
@@ -1282,9 +1284,9 @@ const rules = {
 };
 ```
 
-Error code: `INVALID_ENUM`
+##### Error code: `INVALID_ENUM`
 
-Possible error codes for types:
+## Possible error codes for types:
 
 ```text
 INVALID_TYPE
@@ -1299,9 +1301,9 @@ INVALID_UUID_V5
 INVALID_OBJECT_ID
 ```
 
-## For `type: "number"`, `NaN` is rejected as `INVALID_TYPE`.
+##### For `type: "number"`, `NaN` is rejected as `INVALID_TYPE`.
 
-### `regex`
+## `regex`
 
 Validates a value using a regular expression. Default: `Not applied when omitted.`
 
@@ -1316,9 +1318,9 @@ const rules = {
 };
 ```
 
-## Error code: `REGEX_MISMATCH`
+##### Error code: `REGEX_MISMATCH`
 
-### `minLength`
+## `minLength`
 
 Defines the minimum allowed string length. Default: `Not applied when omitted.`
 
@@ -1333,9 +1335,9 @@ const rules = {
 };
 ```
 
-## Error code: `MIN_LENGTH`
+##### Error code: `MIN_LENGTH`
 
-### `maxLength`
+## `maxLength`
 
 Defines the maximum allowed string length. Default: `Not applied when omitted.`
 
@@ -1350,9 +1352,9 @@ const rules = {
 };
 ```
 
-## Error code: `MAX_LENGTH`
+##### Error code: `MAX_LENGTH`
 
-### `preventDecimal`
+## `preventDecimal`
 
 Prevents decimal numbers. Default: `false`; both integer and decimal numbers are allowed.
 
@@ -1367,9 +1369,9 @@ const rules = {
 };
 ```
 
-## Error code: `DECIMAL_NOT_ALLOWED`
+##### Error code: `DECIMAL_NOT_ALLOWED`
 
-### `min`
+## `min`
 
 Defines the minimum allowed numeric value. Default: `Not applied when omitted.`
 
@@ -1384,9 +1386,9 @@ const rules = {
 };
 ```
 
-## Error code: `MIN_VALUE`
+##### Error code: `MIN_VALUE`
 
-### `max`
+## `max`
 
 Defines the maximum allowed numeric value. Default: `Not applied when omitted.`
 
@@ -1401,26 +1403,66 @@ const rules = {
 };
 ```
 
-## Error code: `MAX_VALUE`
+##### Error code: `MAX_VALUE`
 
-### `range`
+## `range`
 
-Defines the allowed numeric range. Default: `Not applied when omitted.`
+Defines the allowed numeric range.
 
-Example:
+Default: `Not applied when omitted.`
 
 ```js
 const rules = {
   marks: {
     type: "number",
-    range: "0-100",
+    range: "-20:100",
   },
 };
 ```
 
-## Error code: `OUT_OF_RANGE`
+Range boundaries are order-independent. For example, these are equivalent:
 
-### `elementConstraints`
+```text
+-100:100
+100:-100
+```
+
+`range` supports both number values and numeric string values.
+
+```js
+const payload = {
+  marks: "-22",
+};
+
+const rules = {
+  marks: {
+    type: "string",
+    range: "-100:100",
+  },
+};
+```
+
+Numeric strings are converted only for range comparison. The original value type is preserved in `validatedPayload`.
+
+```js
+validatedPayload.marks;
+// "-22"
+```
+
+#### Legacy `-` separator
+
+The previous `-` separator remains supported for backward compatibility:
+
+```text
+0-100
+-20-100
+```
+
+Support for the legacy `-` separator is planned to be removed after **March 31, 2027**.
+
+##### Error code: `OUT_OF_RANGE`
+
+## `elementConstraints`
 
 Validates every item in an array.
 
@@ -1486,7 +1528,7 @@ const rules = {
 };
 ```
 
-### `objectAttr`
+## `objectAttr`
 
 Validates fields inside a nested object.
 
@@ -1528,9 +1570,7 @@ Nested errors include the complete field path:
 }
 ```
 
----
-
-### `dependency`
+## `dependency`
 
 Allows validation rules to depend on another field.
 
@@ -1894,7 +1934,7 @@ For example, returning `undefined` throws:
 perfect-payload:- transform must not return undefined for attribute username
 ```
 
-### `customValidator`
+## `customValidator`
 
 Defines custom validation logic when the built-in rules are not enough.
 
@@ -1914,7 +1954,7 @@ customValidator: (value, payload) => {
 
 For nested validation, `payload` means the current nested object rather than the root request body.
 
-#### Synchronous custom validator
+### Synchronous custom validator
 
 Use a synchronous validator with `perfectPayload()`:
 
@@ -2274,7 +2314,7 @@ If `email` is present but invalid:
 }
 ```
 
-### Supported Custom Error Properties
+## Supported Custom Error Properties
 
 | Validation Rule      | Custom Error Property     |
 | -------------------- | ------------------------- |
@@ -2693,7 +2733,7 @@ products[2].price
 
 This provides enough information for consumers to identify the exact field that caused the validation error.
 
-### Why Structured Paths Are Useful
+## Why Structured Paths Are Useful
 
 Instead of parsing an error message to determine which field failed, applications can directly use:
 

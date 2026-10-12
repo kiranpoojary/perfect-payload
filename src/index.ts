@@ -911,7 +911,12 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
     const attrExist = Object.keys(data ?? {}).includes(attributeName);
 
     const mandatoryValidationFailed =
-      isMandatoryField && (!attrExist || attributeValue === "");
+      isMandatoryField &&
+      (!attrExist ||
+        attributeValue === "" ||
+        (attributeRules?.trim === true &&
+          typeof attributeValue === "string" &&
+          attributeValue.trim() === ""));
 
     if (mandatoryValidationFailed) {
       addNextError = false;
@@ -1629,40 +1634,85 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
 
           break;
         }
-        case "range": {
-          const range = attributeRules.range;
 
-          if (addNextError) {
-            if (attributeValue == null && nullAllowed) {
-              addNextError = true;
-            } else if (!isNumber(attributeValue)) {
+        case "range": {
+          if (!addNextError) {
+            break;
+          }
+
+          const rangeValue = String(attributeRules.range);
+
+          const colonRangeMatch = rangeValue.match(
+            /^\s*([+-]?\d+(?:\.\d+)?)\s*:\s*([+-]?\d+(?:\.\d+)?)\s*$/,
+          );
+
+          const legacyHyphenRangeMatch = rangeValue.match(
+            /^\s*([+-]?\d+(?:\.\d+)?)\s*-\s*([+-]?\d+(?:\.\d+)?)\s*$/,
+          );
+
+          const rangeMatch = colonRangeMatch ?? legacyHyphenRangeMatch;
+
+          if (!rangeMatch) {
+            throw new Error(
+              `perfect-payload:- invalid range format for attribute ${attributePath}`,
+            );
+          }
+
+          const firstBoundary = Number(rangeMatch[1]);
+          const secondBoundary = Number(rangeMatch[2]);
+
+          const min = Math.min(firstBoundary, secondBoundary);
+          const max = Math.max(firstBoundary, secondBoundary);
+
+          let rangeComparableValue: number;
+
+          if (typeof attributeValue === "number") {
+            rangeComparableValue = attributeValue;
+          } else if (typeof attributeValue === "string") {
+            const trimmedValue = attributeValue.trim();
+
+            if (trimmedValue === "" || !Number.isFinite(Number(trimmedValue))) {
               addStructuredError(
                 rowErrors,
                 attributePath,
-                "INVALID_TYPE",
-                `Invalid type for attribute ${attributePath}, required number value`,
+                "OUT_OF_RANGE",
+                attributeRules.rangeError ??
+                  `Attribute ${attributePath} should have a numeric value between ${min} and ${max}`,
               );
 
               addNextError = false;
-            } else if (range !== undefined) {
-              const [min, max] = range.split("-");
-
-              if (+attributeValue < +min || +attributeValue > +max) {
-                addStructuredError(
-                  rowErrors,
-                  attributePath,
-                  "OUT_OF_RANGE",
-                  attributeRules?.["rangeError"] ||
-                    `Attribute ${attributePath} should have a value between ${min} and ${max}`,
-                );
-
-                addNextError = false;
-              }
+              break;
             }
+
+            rangeComparableValue = Number(trimmedValue);
+          } else {
+            addStructuredError(
+              rowErrors,
+              attributePath,
+              "OUT_OF_RANGE",
+              attributeRules.rangeError ??
+                `Attribute ${attributePath} should have a numeric value between ${min} and ${max}`,
+            );
+
+            addNextError = false;
+            break;
+          }
+
+          if (rangeComparableValue < min || rangeComparableValue > max) {
+            addStructuredError(
+              rowErrors,
+              attributePath,
+              "OUT_OF_RANGE",
+              attributeRules.rangeError ??
+                `Attribute ${attributePath} should have a value between ${min} and ${max}`,
+            );
+
+            addNextError = false;
           }
 
           break;
         }
+
         case "objectAttr": {
           const objectAttr = attributeRules.objectAttr;
 
