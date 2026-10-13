@@ -59,15 +59,15 @@ const options = {
 // // 1. Core Sync
 // // --------------------------------------------------
 
-// console.log("\n1. CORE SYNC");
+console.log("\n1. CORE SYNC");
 
-// try {
-//   const result = perfectPayload(payload, rules, options);
+try {
+  const result = perfectPayload(payload, rules, options);
 
-//   console.log(result);
-// } catch (error) {
-//   console.error(error);
-// }
+  console.log(result);
+} catch (error) {
+  console.error(error);
+}
 
 // // --------------------------------------------------
 // // 2. Core Async
@@ -220,47 +220,47 @@ const options = {
 // // 7. Fastify Async
 // // --------------------------------------------------
 
-console.log("\n7. FASTIFY ASYNC");
+// console.log("\n7. FASTIFY ASYNC");
 
-try {
-  const hook = fastifyValidatePayloadAsync({
-    rule: {
-      body: rules,
-    },
-    options,
-  });
+// try {
+//   const hook = fastifyValidatePayloadAsync({
+//     rule: {
+//       body: rules,
+//     },
+//     options,
+//   });
 
-  const request: any = {
-    body: payload,
-    headers: {},
-    params: {},
-    query: {},
-  };
+//   const request: any = {
+//     body: payload,
+//     headers: {},
+//     params: {},
+//     query: {},
+//   };
 
-  const reply: any = {
-    statusCode: 200,
-    body: undefined,
+//   const reply: any = {
+//     statusCode: 200,
+//     body: undefined,
 
-    code(statusCode: number) {
-      this.statusCode = statusCode;
-      return this;
-    },
+//     code(statusCode: number) {
+//       this.statusCode = statusCode;
+//       return this;
+//     },
 
-    status(statusCode: number) {
-      this.statusCode = statusCode;
-      return this;
-    },
+//     status(statusCode: number) {
+//       this.statusCode = statusCode;
+//       return this;
+//     },
 
-    send(data: unknown) {
-      this.body = data;
-      console.log(data);
-      return this;
-    },
-  };
+//     send(data: unknown) {
+//       this.body = data;
+//       console.log(data);
+//       return this;
+//     },
+//   };
 
-  await hook(request, reply);
+//   await hook(request, reply);
 
-  console.log(request.validatedPayload);
-} catch (error) {
-  console.error(error);
-}
+//   console.log(request.validatedPayload);
+// } catch (error) {
+//   console.error(error);
+// }

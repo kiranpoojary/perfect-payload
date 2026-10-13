@@ -3,15 +3,15 @@ import {
   validateFrameworkConfig,
   validateFrameworkSources,
   validateFrameworkSourcesAsync,
-} from "./framework.js";
+} from "./dist/framework.js";
 import {
   validatePayload as validateExpressPayload,
   validatePayloadAsync as validateExpressPayloadAsync,
-} from "./express.js";
+} from "./dist/express.js";
 import {
   validatePayload as validateFastifyPayload,
   validatePayloadAsync as validateFastifyPayloadAsync,
-} from "./fastify.js";
+} from "./dist/fastify.js";
 /*
 |--------------------------------------------------------------------------
 | perfect-payload v1.2.0 regression test

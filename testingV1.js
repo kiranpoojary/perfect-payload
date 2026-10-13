@@ -1,4 +1,4 @@
-import { perfectPayloadV1 } from "./index.js";
+import { perfectPayloadV1 } from "./dist/index.js";
 
 /*
 |--------------------------------------------------------------------------
