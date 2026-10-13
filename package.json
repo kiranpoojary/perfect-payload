@@ -24,20 +24,13 @@
   },
   "sideEffects": false,
   "scripts": {
-    "test": "jest",
     "build": "tsc",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
     "test:types": "tsc type-test.ts --noEmit --strict --module NodeNext --moduleResolution NodeNext --target ES2022 --ignoreConfig --skipLibCheck"
   },
   "files": [
     "dist"
   ],
-  "jest": {
-    "testPathIgnorePatterns": [
-      "/node_modules/",
-      "/test.js",
-      "/testingV1.js"
-    ]
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kiranpoojary/perfect-payload.git"
@@ -70,6 +63,7 @@
     "@babel/core": "^7.25.2",
     "@babel/preset-env": "^7.25.4",
     "@types/express": "^5.0.6",
+    "@types/jest": "^30.0.0",
     "@types/node": "^26.6.2",
     "babel-jest": "^29.7.0",
     "express": "^5.2.1",
