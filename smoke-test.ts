@@ -38,7 +38,7 @@ const res: any = {
 };
 
 const payload = {
-  mark: 505,
+  mark: 50,
 };
 
 const rules = {
@@ -49,7 +49,7 @@ const rules = {
 };
 
 const options = {
-  // unknownFields: "invalid" as any,
+  unknownFields: "invalid" as any,
   // prettyErrors: "invalid" as any,
 };
 

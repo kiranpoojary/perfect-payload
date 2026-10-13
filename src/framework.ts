@@ -71,6 +71,26 @@ export function validateFrameworkConfig({
     );
   }
 
+  if (
+    options?.unknownFields !== undefined &&
+    !["strip", "allow", "reject"].includes(options.unknownFields)
+  ) {
+    throw new PerfectPayloadError(
+      "ERR_INVALID_UNKNOWN_FIELDS",
+      'unknownFields must be one of "strip", "allow", or "reject"',
+    );
+  }
+
+  if (
+    options?.prettyErrors !== undefined &&
+    typeof options.prettyErrors !== "boolean"
+  ) {
+    throw new PerfectPayloadError(
+      "ERR_INVALID_PRETTY_ERRORS",
+      "prettyErrors must be a boolean",
+    );
+  }
+
   return SUPPORTED_REQUEST_SOURCES.filter((source) =>
     Object.prototype.hasOwnProperty.call(frameworkRule, source),
   );
