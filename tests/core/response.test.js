@@ -1,4 +1,5 @@
 import { describe, test, expect } from "@jest/globals";
+import { perfectPayload } from "../../dist/index.js";
 
 import {
   invalidResult,
@@ -132,5 +133,72 @@ describe("Core - Custom Valid Response", () => {
 
   test("Custom valid response contains validatedPayload", () => {
     expect(typeof customValidResult?.validatedPayload).toBe("object");
+  });
+});
+describe("Core - Three Argument API Custom Responses", () => {
+  const options = {
+    unknownFields: "allow",
+    validPayloadResponse: {
+      statusCode: 201,
+      valid: true,
+      message: "Payload validation successful",
+    },
+    inValidPayloadResponse: {
+      statusCode: 422,
+      valid: false,
+      message: "Custom validation failed",
+    },
+  };
+
+  test("v1.7 three argument API uses custom valid response", () => {
+    const result = perfectPayload(
+      {
+        name: "  KIRAN  ",
+        role: "developer",
+      },
+      {
+        name: {
+          mandatory: true,
+          type: "string",
+          trim: true,
+          lowercase: true,
+        },
+      },
+      options,
+    );
+
+    expect(result.statusCode).toBe(201);
+    expect(result.valid).toBe(true);
+    expect(result.message).toBe("Payload validation successful");
+    expect(result.validatedPayload?.name).toBe("kiran");
+    expect(result.validatedPayload?.role).toBe("developer");
+  });
+
+  test("v1.7 three argument API uses custom invalid response", () => {
+    const result = perfectPayload(
+      {
+        email: "invalid-email",
+        role: "developer",
+      },
+      {
+        email: {
+          mandatory: true,
+          type: "email",
+        },
+      },
+      options,
+    );
+
+    expect(result.statusCode).toBe(422);
+    expect(result.valid).toBe(false);
+    expect(result.message).toBe("Custom validation failed");
+    expect(result.errors).toHaveLength(1);
+
+    expect(result.errors[0]).toEqual(
+      expect.objectContaining({
+        path: "email",
+        code: "INVALID_EMAIL",
+      }),
+    );
   });
 });
