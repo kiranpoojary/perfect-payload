@@ -1,4 +1,5 @@
 // @ts-nocheck
+// RUN: npx tsx smoke-test.ts
 import {
   perfectPayload,
   perfectPayloadAsync,
@@ -15,6 +16,7 @@ import {
   validatePayloadAsync as fastifyValidatePayloadAsync,
 } from "./src/fastify.ts";
 
+// response object for express
 const res: any = {
   statusCode: 200,
   body: undefined,
@@ -38,7 +40,7 @@ const res: any = {
 };
 
 const payload = {
-  mark: 50,
+  mark: 70,
 };
 
 const rules = {
@@ -49,8 +51,8 @@ const rules = {
 };
 
 const options = {
-  unknownFields: "invalid" as any,
-  // prettyErrors: "invalid" as any,
+  unknownFields: "allow" as any,
+  prettyErrors: "false" as any,
 };
 
 // // --------------------------------------------------
@@ -104,7 +106,7 @@ const options = {
 // try {
 //   const middleware = expressValidatePayload({
 //     rule: {
-//       body: rules,
+//       bodyq: rules,
 //     },
 //     options,
 //   });
@@ -114,28 +116,6 @@ const options = {
 //     headers: {},
 //     params: {},
 //     query: {},
-//   };
-
-//   const res: any = {
-//     statusCode: 200,
-//     body: undefined,
-
-//     status(code: number) {
-//       this.statusCode = code;
-//       return this;
-//     },
-
-//     json(data: unknown) {
-//       this.body = data;
-//       console.log(data);
-//       return this;
-//     },
-
-//     send(data: unknown) {
-//       this.body = data;
-//       console.log(data);
-//       return this;
-//     },
 //   };
 
 //   const next = (error?: unknown) => {
@@ -156,36 +136,36 @@ const options = {
 // 5. Express Async
 // --------------------------------------------------
 
-console.log("\n5. EXPRESS ASYNC");
+// console.log("\n5. EXPRESS ASYNC");
 
-try {
-  const middleware = expressValidatePayloadAsync({
-    rule: {
-      body: rules,
-    },
-    options,
-  });
+// try {
+//   const middleware = expressValidatePayloadAsync({
+//     rule: {
+//       body: rules,
+//     },
+//     options,
+//   });
 
-  const req: any = {
-    body: payload,
-    headers: {},
-    params: {},
-    query: {},
-  };
+//   const req: any = {
+//     body: payload,
+//     headers: {},
+//     params: {},
+//     query: {},
+//   };
 
-  const next = (error?: unknown) => {
-    if (error) {
-      console.error(error);
-      return;
-    }
+//   const next = (error?: unknown) => {
+//     if (error) {
+//       console.error(error);
+//       return;
+//     }
 
-    console.log(req.validatedPayload);
-  };
+//     console.log(req.validatedPayload);
+//   };
 
-  await middleware(req, res, next);
-} catch (error) {
-  console.error(error);
-}
+//   await middleware(req, res, next);
+// } catch (error) {
+//   console.error(error);
+// }
 
 // // --------------------------------------------------
 // // 6. Fastify Sync
@@ -240,47 +220,47 @@ try {
 // // 7. Fastify Async
 // // --------------------------------------------------
 
-// console.log("\n7. FASTIFY ASYNC");
+console.log("\n7. FASTIFY ASYNC");
 
-// try {
-//   const hook = fastifyValidatePayloadAsync({
-//     rule: {
-//       body: rules,
-//     },
-//     options,
-//   });
+try {
+  const hook = fastifyValidatePayloadAsync({
+    rule: {
+      body: rules,
+    },
+    options,
+  });
 
-//   const request: any = {
-//     body: payload,
-//     headers: {},
-//     params: {},
-//     query: {},
-//   };
+  const request: any = {
+    body: payload,
+    headers: {},
+    params: {},
+    query: {},
+  };
 
-//   const reply: any = {
-//     statusCode: 200,
-//     body: undefined,
+  const reply: any = {
+    statusCode: 200,
+    body: undefined,
 
-//     code(statusCode: number) {
-//       this.statusCode = statusCode;
-//       return this;
-//     },
+    code(statusCode: number) {
+      this.statusCode = statusCode;
+      return this;
+    },
 
-//     status(statusCode: number) {
-//       this.statusCode = statusCode;
-//       return this;
-//     },
+    status(statusCode: number) {
+      this.statusCode = statusCode;
+      return this;
+    },
 
-//     send(data: unknown) {
-//       this.body = data;
-//       console.log(data);
-//       return this;
-//     },
-//   };
+    send(data: unknown) {
+      this.body = data;
+      console.log(data);
+      return this;
+    },
+  };
 
-//   await hook(request, reply);
+  await hook(request, reply);
 
-//   console.log(request.validatedPayload);
-// } catch (error) {
-//   console.error(error);
-// }
+  console.log(request.validatedPayload);
+} catch (error) {
+  console.error(error);
+}
