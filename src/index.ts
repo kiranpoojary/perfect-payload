@@ -754,7 +754,6 @@ export async function perfectPayloadAsync<
     unknownFields = "strip",
     prettyErrors = false,
   } = options ?? {};
-
   if (!["strip", "allow", "reject"].includes(unknownFields)) {
     throw new PerfectPayloadError(
       "ERR_INVALID_UNKNOWN_FIELDS",
@@ -1648,7 +1647,6 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
 
           break;
         }
-
         case "range": {
           if (!addNextError) {
             break;
@@ -1727,7 +1725,6 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
 
           break;
         }
-
         case "objectAttr": {
           const objectAttr = attributeRules.objectAttr;
 
