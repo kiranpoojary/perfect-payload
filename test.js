@@ -1,3 +1,4 @@
+// RUN: npm run  build && node test.js
 import { perfectPayload, perfectPayloadAsync } from "./dist/index.js";
 import {
   validateFrameworkConfig,
@@ -5232,8 +5233,10 @@ try {
 
 check(
   "v1.8 framework config rejects missing rule",
-  missingRuleError?.message ===
-    "perfect-payload:- framework rule must be an object",
+  missingRuleError instanceof TypeError &&
+    missingRuleError.name === "TypeError [ERR_INVALID_FRAMEWORK_RULE]" &&
+    missingRuleError.code === "ERR_INVALID_FRAMEWORK_RULE" &&
+    missingRuleError.message === "framework rule must be an object",
 );
 
 // --------------------------------------------------
@@ -5252,8 +5255,10 @@ try {
 
 check(
   "v1.8 framework config rejects null rule",
-  nullRuleError?.message ===
-    "perfect-payload:- framework rule must be an object",
+  nullRuleError instanceof TypeError &&
+    nullRuleError.name === "TypeError [ERR_INVALID_FRAMEWORK_RULE]" &&
+    nullRuleError.code === "ERR_INVALID_FRAMEWORK_RULE" &&
+    nullRuleError.message === "framework rule must be an object",
 );
 
 // --------------------------------------------------
@@ -5272,8 +5277,10 @@ try {
 
 check(
   "v1.8 framework config rejects array rule",
-  arrayRuleError?.message ===
-    "perfect-payload:- framework rule must be an object",
+  arrayRuleError instanceof TypeError &&
+    arrayRuleError.name === "TypeError [ERR_INVALID_FRAMEWORK_RULE]" &&
+    arrayRuleError.code === "ERR_INVALID_FRAMEWORK_RULE" &&
+    arrayRuleError.message === "framework rule must be an object",
 );
 
 // --------------------------------------------------
@@ -5292,8 +5299,11 @@ try {
 
 check(
   "v1.8 framework config rejects empty rule",
-  emptyRuleError?.message ===
-    "perfect-payload:- framework rule must contain at least one request source",
+  emptyRuleError instanceof TypeError &&
+    emptyRuleError.name === "TypeError [ERR_INVALID_FRAMEWORK_RULE]" &&
+    emptyRuleError.code === "ERR_INVALID_FRAMEWORK_RULE" &&
+    emptyRuleError.message ===
+      "framework rule must contain at least one request source",
 );
 
 // --------------------------------------------------
@@ -5318,8 +5328,11 @@ try {
 
 check(
   "v1.8 framework config rejects unsupported request source",
-  unsupportedSourceError?.message ===
-    "perfect-payload:- unsupported request source cookies",
+  unsupportedSourceError instanceof TypeError &&
+    unsupportedSourceError.name ===
+      "TypeError [ERR_UNSUPPORTED_REQUEST_SOURCE]" &&
+    unsupportedSourceError.code === "ERR_UNSUPPORTED_REQUEST_SOURCE" &&
+    unsupportedSourceError.message === 'Unsupported request source "cookies"',
 );
 
 // --------------------------------------------------
@@ -5340,8 +5353,12 @@ try {
 
 check(
   "v1.8 framework config rejects null source rule",
-  nullSourceRuleError?.message ===
-    "perfect-payload:- rule for request source body must be an object",
+  nullSourceRuleError instanceof TypeError &&
+    nullSourceRuleError.name ===
+      "TypeError [ERR_INVALID_REQUEST_SOURCE_RULE]" &&
+    nullSourceRuleError.code === "ERR_INVALID_REQUEST_SOURCE_RULE" &&
+    nullSourceRuleError.message ===
+      `rule for request source "body" must be an object`,
 );
 
 // --------------------------------------------------
@@ -5362,8 +5379,12 @@ try {
 
 check(
   "v1.8 framework config rejects array source rule",
-  arraySourceRuleError?.message ===
-    "perfect-payload:- rule for request source query must be an object",
+  arraySourceRuleError instanceof TypeError &&
+    arraySourceRuleError.name ===
+      "TypeError [ERR_INVALID_REQUEST_SOURCE_RULE]" &&
+    arraySourceRuleError.code === "ERR_INVALID_REQUEST_SOURCE_RULE" &&
+    arraySourceRuleError.message ===
+      'rule for request source "query" must be an object',
 );
 
 // --------------------------------------------------
@@ -5389,8 +5410,10 @@ try {
 
 check(
   "v1.8 framework config rejects non-object options",
-  invalidOptionsError?.message ===
-    "perfect-payload:- framework options must be an object",
+  invalidOptionsError instanceof TypeError &&
+    invalidOptionsError.name === "TypeError [ERR_INVALID_FRAMEWORK_OPTIONS]" &&
+    invalidOptionsError.code === "ERR_INVALID_FRAMEWORK_OPTIONS" &&
+    invalidOptionsError.message === "framework options must be an object",
 );
 
 // --------------------------------------------------
@@ -5728,9 +5751,9 @@ check(
     frameworkPrettyErrors.errors?.length === 2 &&
     frameworkPrettyErrors.errors?.every((error) => typeof error === "string") &&
     frameworkPrettyErrors.errors?.[0] ===
-      "Invalid type for attribute userId, required string value" &&
+      "Invalid type for attribute params.userId, required string value" &&
     frameworkPrettyErrors.errors?.[1] ===
-      "Invalid email format for attribute email",
+      "Invalid email format for attribute body.email",
 );
 
 // --------------------------------------------------
@@ -5865,8 +5888,10 @@ try {
 
 check(
   "v1.8 framework sync propagates core option configuration errors",
-  frameworkCoreConfigError?.message ===
-    "perfect-payload:- prettyErrors must be a boolean",
+  frameworkCoreConfigError instanceof TypeError &&
+    frameworkCoreConfigError.name === "TypeError [ERR_INVALID_PRETTY_ERRORS]" &&
+    frameworkCoreConfigError.code === "ERR_INVALID_PRETTY_ERRORS" &&
+    frameworkCoreConfigError.message === "prettyErrors must be a boolean",
 );
 
 // --------------------------------------------------
@@ -6471,8 +6496,11 @@ try {
 
 check(
   "v1.8 framework async propagates core option configuration errors",
-  frameworkAsyncConfigError?.message ===
-    "perfect-payload:- prettyErrors must be a boolean",
+  frameworkAsyncConfigError instanceof TypeError &&
+    frameworkAsyncConfigError.name ===
+      "TypeError [ERR_INVALID_PRETTY_ERRORS]" &&
+    frameworkAsyncConfigError.code === "ERR_INVALID_PRETTY_ERRORS" &&
+    frameworkAsyncConfigError.message === "prettyErrors must be a boolean",
 );
 
 // ==================================================
@@ -6726,13 +6754,12 @@ function createMockExpressResponse() {
   middleware(req, res, () => {
     nextCalled = true;
   });
-
   check(
     "v1.8 Express sync supports prettyErrors",
     nextCalled === false &&
       res.statusCode === 400 &&
       typeof res.body?.errors?.[0] === "string" &&
-      res.body?.errors?.[0] === "Invalid email format for attribute email",
+      res.body?.errors?.[0] === "Invalid email format for attribute body.email",
   );
 }
 
@@ -6841,8 +6868,10 @@ function createMockExpressResponse() {
 
   check(
     "v1.8 Express validates configuration during middleware creation",
-    configError?.message ===
-      "perfect-payload:- unsupported request source cookies",
+    configError instanceof TypeError &&
+      configError.name === "TypeError [ERR_UNSUPPORTED_REQUEST_SOURCE]" &&
+      configError.code === "ERR_UNSUPPORTED_REQUEST_SOURCE" &&
+      configError.message === 'Unsupported request source "cookies"',
   );
 }
 
@@ -7248,12 +7277,12 @@ function createMockFastifyReply() {
   const reply = createMockFastifyReply();
 
   await hook(request, reply);
-
   check(
     "v1.8 Fastify sync supports prettyErrors",
     reply.statusCode === 400 &&
       typeof reply.body?.errors?.[0] === "string" &&
-      reply.body?.errors?.[0] === "Invalid email format for attribute email",
+      reply.body?.errors?.[0] ===
+        "Invalid email format for attribute body.email",
   );
 }
 
@@ -7361,11 +7390,12 @@ function createMockFastifyReply() {
   } catch (error) {
     configError = error;
   }
-
   check(
     "v1.8 Fastify validates configuration during hook creation",
-    configError?.message ===
-      "perfect-payload:- unsupported request source cookies",
+    configError instanceof TypeError &&
+      configError.name === "TypeError [ERR_UNSUPPORTED_REQUEST_SOURCE]" &&
+      configError.code === "ERR_UNSUPPORTED_REQUEST_SOURCE" &&
+      configError.message === 'Unsupported request source "cookies"',
   );
 }
 
