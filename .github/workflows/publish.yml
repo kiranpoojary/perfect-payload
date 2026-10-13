@@ -332,7 +332,7 @@ jobs:
             fi
 
             echo "Waiting for npm registry... attempt $ATTEMPT"
-            sleep 10
+            sleep 45
           done
 
           if [[ "$FOUND" != "$VERSION" ]]; then
