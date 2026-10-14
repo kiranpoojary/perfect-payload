@@ -133,8 +133,8 @@ jobs:
       - name: Run TypeScript tests
         run: npm run test:types
 
-      - name: Run regression tests
-        run: node test.js
+      - name: Run Jest regression tests
+        run: npm test
 
       - name: Verify required dist files
         shell: bash
