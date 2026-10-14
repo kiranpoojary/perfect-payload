@@ -25,6 +25,7 @@
   "sideEffects": false,
   "scripts": {
     "build": "tsc",
+    "pretest": "npm run build",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
     "test:types": "tsc type-test.ts --noEmit --strict --module NodeNext --moduleResolution NodeNext --target ES2022 --ignoreConfig --skipLibCheck"
   },

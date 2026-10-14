@@ -1,5 +1,5 @@
 import { describe, test, expect } from "@jest/globals";
-
+import { perfectPayload } from "../../dist/index.js";
 import { invalidResult } from "../fixtures/core.fixtures.js";
 
 describe("Core - Dependency Validations", () => {
@@ -24,6 +24,37 @@ describe("Core - Dependency Validations", () => {
           message: "minSalary must be less than maxSalary",
         }),
       ]),
+    );
+  });
+
+  test("invalid dependency rule throws Node-style configuration error", () => {
+    expect(() =>
+      perfectPayload(
+        {
+          minSalary: 10,
+          maxSalary: 20,
+        },
+        {
+          minSalary: {
+            type: "number",
+            dependency: {
+              maxSalary: {
+                setDependencyRule: "invalid",
+              },
+            },
+          },
+          maxSalary: {
+            type: "number",
+          },
+        },
+      ),
+    ).toThrow(
+      expect.objectContaining({
+        name: "TypeError [ERR_INVALID_DEPENDENCY_RULE]",
+        code: "ERR_INVALID_DEPENDENCY_RULE",
+        message:
+          'setDependencyRule must be a function for dependency "maxSalary"',
+      }),
     );
   });
 });

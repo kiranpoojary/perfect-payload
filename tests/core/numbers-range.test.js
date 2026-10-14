@@ -106,3 +106,162 @@ describe("Core - Number Validations", () => {
     });
   });
 });
+
+describe("Core - Signed and Decimal Range Boundaries", () => {
+  test("range supports negative minimum", () => {
+    const result = perfectPayload(
+      { temperature: -10 },
+      {
+        temperature: {
+          type: "number",
+          range: "-20-100",
+        },
+      },
+    );
+
+    expect(result.valid).toBe(true);
+    expect(result.validatedPayload.temperature).toBe(-10);
+  });
+
+  test("range rejects value below negative minimum", () => {
+    const result = perfectPayload(
+      { temperature: -21 },
+      {
+        temperature: {
+          type: "number",
+          range: "-20-100",
+        },
+      },
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.errors?.[0]?.code).toBe("OUT_OF_RANGE");
+  });
+
+  test("range supports two negative boundaries", () => {
+    const result = perfectPayload(
+      { temperature: -10 },
+      {
+        temperature: {
+          type: "number",
+          range: "-20--1",
+        },
+      },
+    );
+
+    expect(result.valid).toBe(true);
+  });
+
+  test("range supports explicit positive boundary", () => {
+    const result = perfectPayload(
+      { temperature: 50 },
+      {
+        temperature: {
+          type: "number",
+          range: "-20-+100",
+        },
+      },
+    );
+
+    expect(result.valid).toBe(true);
+  });
+
+  test("range supports signed decimal boundaries", () => {
+    const result = perfectPayload(
+      { temperature: -10.25 },
+      {
+        temperature: {
+          type: "number",
+          range: "-20.5-10.5",
+        },
+      },
+    );
+
+    expect(result.valid).toBe(true);
+  });
+  test("range rejects malformed format with Node-style configuration error", () => {
+    expect(() =>
+      perfectPayload(
+        { value: 10 },
+        {
+          value: {
+            type: "number",
+            range: "10-",
+          },
+        },
+      ),
+    ).toThrow(
+      expect.objectContaining({
+        name: "TypeError [ERR_INVALID_RANGE]",
+        code: "ERR_INVALID_RANGE",
+        message: 'Invalid range format for attribute "value"',
+      }),
+    );
+  });
+  test("range supports reversed legacy boundaries", () => {
+    const result = perfectPayload(
+      { value: 10 },
+      {
+        value: {
+          type: "number",
+          range: "100--20",
+        },
+      },
+    );
+
+    expect(result.valid).toBe(true);
+    expect(result.validatedPayload.value).toBe(10);
+  });
+  describe("Core - Range Boundary Order Independence", () => {
+    test.each([
+      ["ascending positive", 50, "20:100"],
+      ["descending positive", 50, "100:20"],
+      ["ascending negative", -50, "-100:-20"],
+      ["descending negative", -50, "-20:-100"],
+      ["ascending mixed-sign", 0, "-20:100"],
+      ["descending mixed-sign", 0, "100:-20"],
+    ])("range supports %s boundaries", (_scenario, value, range) => {
+      const result = perfectPayload(
+        { value },
+        {
+          value: {
+            type: "number",
+            range,
+          },
+        },
+      );
+
+      expect(result.valid).toBe(true);
+    });
+  });
+  describe("Core - Numeric and Numeric-String Ranges", () => {
+    test.each([
+      ["numeric value", -22, "number", true, null],
+      ["numeric string value", "-22", "string", true, null],
+      ["numeric string below minimum", "-101", "string", false, "OUT_OF_RANGE"],
+      ["numeric string above maximum", "101", "string", false, "OUT_OF_RANGE"],
+      ["non-numeric string value", "abc", "string", false, "OUT_OF_RANGE"],
+    ])(
+      "range validates %s",
+      (_scenario, value, type, expectedValid, expectedErrorCode) => {
+        const result = perfectPayload(
+          { value },
+          {
+            value: {
+              type,
+              range: "-100:100",
+            },
+          },
+        );
+
+        expect(result.valid).toBe(expectedValid);
+
+        if (expectedValid) {
+          expect(result.validatedPayload.value).toBe(value);
+        } else {
+          expect(result.errors?.[0]?.code).toBe(expectedErrorCode);
+        }
+      },
+    );
+  });
+});

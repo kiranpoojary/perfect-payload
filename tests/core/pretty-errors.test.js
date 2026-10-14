@@ -97,4 +97,25 @@ describe("Core - Pretty Errors (Sync)", () => {
     expect(result.validatedPayload?.email).toBe("user@example.com");
     expect(result.errors).toBeUndefined();
   });
+  test("invalid prettyErrors throws Node-style configuration error", () => {
+    expect(() =>
+      perfectPayload(
+        { name: "Kiran" },
+        {
+          name: {
+            type: "string",
+          },
+        },
+        {
+          prettyErrors: "true",
+        },
+      ),
+    ).toThrow(
+      expect.objectContaining({
+        name: "TypeError [ERR_INVALID_PRETTY_ERRORS]",
+        code: "ERR_INVALID_PRETTY_ERRORS",
+        message: "prettyErrors must be a boolean",
+      }),
+    );
+  });
 });
