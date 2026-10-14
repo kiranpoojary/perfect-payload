@@ -51,87 +51,87 @@ describe("Framework - Configuration Validation", () => {
 
     expect(sources).toEqual(["headers", "body"]);
   });
+});
 
-  describe("Invalid Framework Rules", () => {
-    test.each([
-      ["missing rule", undefined],
-      ["null rule", null],
-      ["array rule", []],
-    ])("v1.8 framework config rejects %s", (_scenario, rule) => {
-      expect(() => validateFrameworkConfig({ rule })).toThrow(
-        expect.objectContaining({
-          name: "TypeError [ERR_INVALID_FRAMEWORK_RULE]",
-          code: "ERR_INVALID_FRAMEWORK_RULE",
-          message: "framework rule must be an object",
-        }),
-      );
-    });
-
-    test("v1.8 framework config rejects empty rule", () => {
-      expect(() =>
-        validateFrameworkConfig({
-          rule: {},
-        }),
-      ).toThrow(
-        expect.objectContaining({
-          name: "TypeError [ERR_INVALID_FRAMEWORK_RULE]",
-          code: "ERR_INVALID_FRAMEWORK_RULE",
-          message: "framework rule must contain at least one request source",
-        }),
-      );
-    });
+describe("Invalid Framework Rules", () => {
+  test.each([
+    ["missing rule", undefined],
+    ["null rule", null],
+    ["array rule", []],
+  ])("v1.8 framework config rejects %s", (_scenario, rule) => {
+    expect(() => validateFrameworkConfig({ rule })).toThrow(
+      expect.objectContaining({
+        name: "TypeError [ERR_INVALID_FRAMEWORK_RULE]",
+        code: "ERR_INVALID_FRAMEWORK_RULE",
+        message: "framework rule must be an object",
+      }),
+    );
   });
 
-  describe("Invalid Request Source Rules", () => {
-    test("v1.8 framework config rejects unsupported request source", () => {
-      expect(() =>
-        validateFrameworkConfig({
-          rule: {
-            cookies: {
-              sessionId: { type: "string" },
-            },
-          },
-        }),
-      ).toThrow(
-        expect.objectContaining({
-          name: "TypeError [ERR_UNSUPPORTED_REQUEST_SOURCE]",
-          code: "ERR_UNSUPPORTED_REQUEST_SOURCE",
-          message: 'Unsupported request source "cookies"',
-        }),
-      );
-    });
+  test("v1.8 framework config rejects empty rule", () => {
+    expect(() =>
+      validateFrameworkConfig({
+        rule: {},
+      }),
+    ).toThrow(
+      expect.objectContaining({
+        name: "TypeError [ERR_INVALID_FRAMEWORK_RULE]",
+        code: "ERR_INVALID_FRAMEWORK_RULE",
+        message: "framework rule must contain at least one request source",
+      }),
+    );
+  });
+});
 
-    test("v1.8 framework config rejects null source rule", () => {
-      expect(() =>
-        validateFrameworkConfig({
-          rule: {
-            body: null,
+describe("Invalid Request Source Rules", () => {
+  test("v1.8 framework config rejects unsupported request source", () => {
+    expect(() =>
+      validateFrameworkConfig({
+        rule: {
+          cookies: {
+            sessionId: { type: "string" },
           },
-        }),
-      ).toThrow(
-        expect.objectContaining({
-          name: "TypeError [ERR_INVALID_REQUEST_SOURCE_RULE]",
-          code: "ERR_INVALID_REQUEST_SOURCE_RULE",
-          message: 'rule for request source "body" must be an object',
-        }),
-      );
-    });
+        },
+      }),
+    ).toThrow(
+      expect.objectContaining({
+        name: "TypeError [ERR_UNSUPPORTED_REQUEST_SOURCE]",
+        code: "ERR_UNSUPPORTED_REQUEST_SOURCE",
+        message: 'Unsupported request source "cookies"',
+      }),
+    );
+  });
 
-    test("v1.8 framework config rejects array source rule", () => {
-      expect(() =>
-        validateFrameworkConfig({
-          rule: {
-            query: [],
-          },
-        }),
-      ).toThrow(
-        expect.objectContaining({
-          name: "TypeError [ERR_INVALID_REQUEST_SOURCE_RULE]",
-          code: "ERR_INVALID_REQUEST_SOURCE_RULE",
-          message: 'rule for request source "query" must be an object',
-        }),
-      );
-    });
+  test("v1.8 framework config rejects null source rule", () => {
+    expect(() =>
+      validateFrameworkConfig({
+        rule: {
+          body: null,
+        },
+      }),
+    ).toThrow(
+      expect.objectContaining({
+        name: "TypeError [ERR_INVALID_REQUEST_SOURCE_RULE]",
+        code: "ERR_INVALID_REQUEST_SOURCE_RULE",
+        message: 'rule for request source "body" must be an object',
+      }),
+    );
+  });
+
+  test("v1.8 framework config rejects array source rule", () => {
+    expect(() =>
+      validateFrameworkConfig({
+        rule: {
+          query: [],
+        },
+      }),
+    ).toThrow(
+      expect.objectContaining({
+        name: "TypeError [ERR_INVALID_REQUEST_SOURCE_RULE]",
+        code: "ERR_INVALID_REQUEST_SOURCE_RULE",
+        message: 'rule for request source "query" must be an object',
+      }),
+    );
   });
 });
 
