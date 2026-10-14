@@ -901,7 +901,7 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
 
   for (const attributeName in dataValidationRule) {
     let addNextError = true;
-
+    let customTransformApplied = false;
     const attributeRules = dataValidationRule?.[attributeName];
 
     const attributePath = getAttributePath(
@@ -1027,7 +1027,37 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
       }
 
       attributeValue = transformedValue;
+      customTransformApplied = true;
     }
+
+    const addTypeMismatchError = (expectedType: string): void => {
+      const actualType = Array.isArray(attributeValue)
+        ? "array"
+        : attributeValue === null
+          ? "null"
+          : Number.isNaN(attributeValue)
+            ? "NaN"
+            : typeof attributeValue;
+
+      addStructuredError(
+        rowErrors,
+        attributePath,
+        customTransformApplied
+          ? "INVALID_TRANSFORM_RESULT_TYPE"
+          : "INVALID_TYPE",
+        attributeRules?.typeError ||
+          (customTransformApplied
+            ? `Invalid transform result type for attribute ${attributePath}: expected ${expectedType}, received ${actualType}`
+            : getInvalidTypeMessage(
+                attributeValue,
+                attributePath,
+                expectedType,
+              )),
+      );
+
+      addNextError = false;
+    };
+
     // TRANSFORMATIONS END
     for (const ruleName of VALIDATION_RULE_ORDER) {
       if (!(ruleName in attributeRules)) {
@@ -1253,36 +1283,14 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
                     !isNumber(attributeValue) ||
                     Number.isNaN(attributeValue)
                   ) {
-                    addStructuredError(
-                      rowErrors,
-                      attributePath,
-                      "INVALID_TYPE",
-                      attributeRules?.["typeError"] ||
-                        getInvalidTypeMessage(
-                          attributeValue,
-                          attributePath,
-                          expectedType,
-                        ),
-                    );
-
+                    addTypeMismatchError(expectedType);
                     addNextError = false;
                   }
 
                   break;
                 case "string":
                   if (!isString(attributeValue)) {
-                    addStructuredError(
-                      rowErrors,
-                      attributePath,
-                      "INVALID_TYPE",
-                      attributeRules?.["typeError"] ||
-                        getInvalidTypeMessage(
-                          attributeValue,
-                          attributePath,
-                          expectedType,
-                        ),
-                    );
-
+                    addTypeMismatchError(expectedType);
                     addNextError = false;
                   }
 
@@ -1290,18 +1298,7 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
 
                 case "boolean":
                   if (!isBoolean(attributeValue)) {
-                    addStructuredError(
-                      rowErrors,
-                      attributePath,
-                      "INVALID_TYPE",
-                      attributeRules?.["typeError"] ||
-                        getInvalidTypeMessage(
-                          attributeValue,
-                          attributePath,
-                          expectedType,
-                        ),
-                    );
-
+                    addTypeMismatchError(expectedType);
                     addNextError = false;
                   }
 
@@ -1448,42 +1445,16 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
 
                 case "array":
                   if (!isArray(attributeValue)) {
-                    addStructuredError(
-                      rowErrors,
-                      attributePath,
-                      "INVALID_TYPE",
-                      attributeRules?.["typeError"] ||
-                        getInvalidTypeMessage(
-                          attributeValue,
-                          attributePath,
-                          expectedType,
-                        ),
-                    );
-
+                    addTypeMismatchError(expectedType);
                     addNextError = false;
                   }
-
                   break;
-
                 case "object":
                   if (!isObject(attributeValue)) {
-                    addStructuredError(
-                      rowErrors,
-                      attributePath,
-                      "INVALID_TYPE",
-                      attributeRules?.["typeError"] ||
-                        getInvalidTypeMessage(
-                          attributeValue,
-                          attributePath,
-                          expectedType,
-                        ),
-                    );
-
+                    addTypeMismatchError(expectedType);
                     addNextError = false;
                   }
-
                   break;
-
                 default:
                   break;
               }

@@ -193,12 +193,11 @@ describe("Core - Transformations", () => {
         },
       },
     );
-
     expect(result.errors).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           path: "age",
-          code: "INVALID_TYPE",
+          code: "INVALID_TRANSFORM_RESULT_TYPE",
         }),
       ]),
     );
@@ -472,5 +471,203 @@ describe("Core - Transformations", () => {
     );
 
     expect(customValidatorExecuted).toBe(false);
+  });
+
+  test("transform result type mismatch returns a specific error", () => {
+    const result = perfectPayload(
+      {
+        mark: 55,
+        name: "Kiran",
+        age: 27,
+        college: "PES",
+      },
+      {
+        name: {
+          type: "string",
+        },
+        age: {
+          type: "number",
+          mandatory: true,
+          transform: (age) => String(age),
+        },
+      },
+    );
+
+    expect(result.valid).toBe(false);
+
+    expect(result.errors).toEqual([
+      expect.objectContaining({
+        path: "age",
+        code: "INVALID_TRANSFORM_RESULT_TYPE",
+        message:
+          "Invalid transform result type for attribute age: expected number, received string",
+      }),
+    ]);
+  });
+
+  test("transform returning NaN reports the actual result type", () => {
+    const result = perfectPayload(
+      { age: 27 },
+      {
+        age: {
+          type: "number",
+          transform: () => NaN,
+        },
+      },
+    );
+
+    expect(result.valid).toBe(false);
+
+    expect(result.errors).toEqual([
+      expect.objectContaining({
+        path: "age",
+        code: "INVALID_TRANSFORM_RESULT_TYPE",
+        message:
+          "Invalid transform result type for attribute age: expected number, received NaN",
+      }),
+    ]);
+  });
+});
+describe("Transform Result Type Mismatch - Additional Types", () => {
+  test.each([
+    ["string", 123, "number"],
+    ["boolean", "true", "string"],
+    ["array", {}, "object"],
+    ["object", "invalid-object", "string"],
+    ["number", NaN, "NaN"],
+  ])(
+    "rejects invalid transformed type for %s",
+    (expectedType, transformedValue, actualType) => {
+      const result = perfectPayload(
+        { value: "original" },
+        {
+          value: {
+            type: expectedType,
+            transform: () => transformedValue,
+          },
+        },
+      );
+
+      expect(result.valid).toBe(false);
+      expect(result.errors).toEqual([
+        expect.objectContaining({
+          path: "value",
+          code: "INVALID_TRANSFORM_RESULT_TYPE",
+          message: `Invalid transform result type for attribute value: expected ${expectedType}, received ${actualType}`,
+        }),
+      ]);
+    },
+  );
+  test("invalid input without transform retains INVALID_TYPE", () => {
+    const result = perfectPayload(
+      {
+        age: "27",
+      },
+      {
+        age: {
+          type: "number",
+          mandatory: true,
+        },
+      },
+    );
+
+    expect(result.valid).toBe(false);
+
+    expect(result.errors).toEqual([
+      expect.objectContaining({
+        path: "age",
+        code: "INVALID_TYPE",
+        message: "Invalid type for attribute age, required number value",
+      }),
+    ]);
+  });
+  test("transform result type mismatch preserves custom typeError", () => {
+    const result = perfectPayload(
+      { age: 27 },
+      {
+        age: {
+          type: "number",
+          transform: (age) => String(age),
+          typeError: "Age transformation must return a number",
+        },
+      },
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual([
+      expect.objectContaining({
+        path: "age",
+        code: "INVALID_TRANSFORM_RESULT_TYPE",
+        message: "Age transformation must return a number",
+      }),
+    ]);
+  });
+  test("transform result type mismatch preserves nested attribute path", () => {
+    const result = perfectPayload(
+      {
+        profile: {
+          name: "Kiran",
+          age: 27,
+        },
+      },
+      {
+        profile: {
+          type: "object",
+          objectAttr: {
+            name: { type: "string" },
+            age: {
+              type: "number",
+              transform: (age) => String(age),
+            },
+          },
+        },
+      },
+    );
+
+    expect(result.valid).toBe(false);
+
+    expect(result.errors).toEqual([
+      expect.objectContaining({
+        path: "profile.age",
+        code: "INVALID_TRANSFORM_RESULT_TYPE",
+        message:
+          "Invalid transform result type for attribute profile.age: expected number, received string",
+      }),
+    ]);
+  });
+  // TODO: Separate bug - array elementConstraints loses the index(path)
+  // in the error message. Preserve this regression for a future fix.
+  test.skip("transform result type mismatch preserves indexed array path", () => {
+    const result = perfectPayload(
+      {
+        products: [{ name: "Laptop", price: 50000 }],
+      },
+      {
+        products: {
+          type: "array",
+          elementConstraints: {
+            type: "object",
+            objectAttr: {
+              name: { type: "string" },
+              price: {
+                type: "number",
+                transform: (price) => String(price),
+              },
+            },
+          },
+        },
+      },
+    );
+
+    expect(result.valid).toBe(false);
+
+    expect(result.errors).toEqual([
+      expect.objectContaining({
+        path: "products[0].price",
+        code: "INVALID_TRANSFORM_RESULT_TYPE",
+        message:
+          "Invalid transform result type for attribute products[0].price: expected number, received string",
+      }),
+    ]);
   });
 });
