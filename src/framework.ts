@@ -1,6 +1,4 @@
 import {
-  perfectPayload,
-  perfectPayloadAsync,
   perfectPayloadForFramework,
   perfectPayloadAsyncForFramework,
 } from "./index.js";
@@ -12,6 +10,7 @@ import type {
 } from "./types/framework.js";
 import type { ValidationError } from "./types/errors.js";
 import type { InvalidPayloadResponse } from "./types/results.js";
+import { PerfectPayloadError } from "./errors.js";
 
 const SUPPORTED_REQUEST_SOURCES: RequestSource[] = [
   "headers",
@@ -25,20 +24,27 @@ export function validateFrameworkConfig({
   options,
 }: FrameworkConfig = {}): RequestSource[] {
   if (!rule || typeof rule !== "object" || Array.isArray(rule)) {
-    throw new Error("perfect-payload:- framework rule must be an object");
+    throw new PerfectPayloadError(
+      "ERR_INVALID_FRAMEWORK_RULE",
+      "framework rule must be an object",
+    );
   }
   const frameworkRule = rule;
   const configuredSources = Object.keys(frameworkRule) as RequestSource[];
 
   if (configuredSources.length === 0) {
-    throw new Error(
-      "perfect-payload:- framework rule must contain at least one request source",
+    throw new PerfectPayloadError(
+      "ERR_INVALID_FRAMEWORK_RULE",
+      "framework rule must contain at least one request source",
     );
   }
 
   for (const source of configuredSources) {
     if (!SUPPORTED_REQUEST_SOURCES.includes(source)) {
-      throw new Error(`perfect-payload:- unsupported request source ${source}`);
+      throw new PerfectPayloadError(
+        "ERR_UNSUPPORTED_REQUEST_SOURCE",
+        `Unsupported request source "${source}"`,
+      );
     }
 
     const sourceRule = frameworkRule[source];
@@ -48,8 +54,9 @@ export function validateFrameworkConfig({
       typeof sourceRule !== "object" ||
       Array.isArray(sourceRule)
     ) {
-      throw new Error(
-        `perfect-payload:- rule for request source ${source} must be an object`,
+      throw new PerfectPayloadError(
+        "ERR_INVALID_REQUEST_SOURCE_RULE",
+        `rule for request source "${source}" must be an object`,
       );
     }
   }
@@ -58,7 +65,30 @@ export function validateFrameworkConfig({
     options !== undefined &&
     (options === null || typeof options !== "object" || Array.isArray(options))
   ) {
-    throw new Error("perfect-payload:- framework options must be an object");
+    throw new PerfectPayloadError(
+      "ERR_INVALID_FRAMEWORK_OPTIONS",
+      "framework options must be an object",
+    );
+  }
+
+  if (
+    options?.unknownFields !== undefined &&
+    !["strip", "allow", "reject"].includes(options.unknownFields)
+  ) {
+    throw new PerfectPayloadError(
+      "ERR_INVALID_UNKNOWN_FIELDS",
+      'unknownFields must be one of "strip", "allow", or "reject"',
+    );
+  }
+
+  if (
+    options?.prettyErrors !== undefined &&
+    typeof options.prettyErrors !== "boolean"
+  ) {
+    throw new PerfectPayloadError(
+      "ERR_INVALID_PRETTY_ERRORS",
+      "prettyErrors must be a boolean",
+    );
   }
 
   return SUPPORTED_REQUEST_SOURCES.filter((source) =>

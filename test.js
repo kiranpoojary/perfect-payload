@@ -1,17 +1,18 @@
+// RUN: npm run  build && node test.js
 import { perfectPayload, perfectPayloadAsync } from "./dist/index.js";
 import {
   validateFrameworkConfig,
   validateFrameworkSources,
   validateFrameworkSourcesAsync,
-} from "./framework.js";
+} from "./dist/framework.js";
 import {
   validatePayload as validateExpressPayload,
   validatePayloadAsync as validateExpressPayloadAsync,
-} from "./express.js";
+} from "./dist/express.js";
 import {
   validatePayload as validateFastifyPayload,
   validatePayloadAsync as validateFastifyPayloadAsync,
-} from "./fastify.js";
+} from "./dist/fastify.js";
 /*
 |--------------------------------------------------------------------------
 | perfect-payload v1.2.0 regression test
@@ -1035,8 +1036,11 @@ try {
   );
 } catch (error) {
   nonFunctionValidatorThrows =
+    error instanceof TypeError &&
+    error.name === "TypeError [ERR_INVALID_CUSTOM_VALIDATOR]" &&
+    error.code === "ERR_INVALID_CUSTOM_VALIDATOR" &&
     error.message ===
-    "perfect-payload:- customValidator must be a function for attribute username";
+      'customValidator must be a function for attribute "username"';
 }
 
 check(
@@ -1062,8 +1066,11 @@ try {
   );
 } catch (error) {
   asyncValidatorThrows =
+    error instanceof TypeError &&
+    error.name === "TypeError [ERR_ASYNC_CUSTOM_VALIDATOR]" &&
+    error.code === "ERR_ASYNC_CUSTOM_VALIDATOR" &&
     error.message ===
-    "perfect-payload:- customValidator must be synchronous for attribute username";
+      'customValidator must be synchronous for attribute "username"';
 }
 
 check(
@@ -1776,8 +1783,10 @@ try {
   );
 } catch (error) {
   nonFunctionTransformThrows =
-    error.message ===
-    "perfect-payload:- transform must be a function for attribute username";
+    error instanceof TypeError &&
+    error.name === "TypeError [ERR_INVALID_TRANSFORM]" &&
+    error.code === "ERR_INVALID_TRANSFORM" &&
+    error.message === 'transform must be a function for attribute "username"';
 }
 
 check(
@@ -1808,8 +1817,10 @@ try {
   );
 } catch (error) {
   asyncTransformThrows =
-    error.message ===
-    "perfect-payload:- transform must be synchronous for attribute username";
+    error instanceof TypeError &&
+    error.name === "TypeError [ERR_ASYNC_TRANSFORM]" &&
+    error.code === "ERR_ASYNC_TRANSFORM" &&
+    error.message === 'transform must be synchronous for attribute "username"';
 }
 
 check(
@@ -2017,8 +2028,11 @@ try {
   );
 } catch (error) {
   transformUndefinedThrows =
+    error instanceof TypeError &&
+    error.name === "TypeError [ERR_UNDEFINED_TRANSFORM_RESULT]" &&
+    error.code === "ERR_UNDEFINED_TRANSFORM_RESULT" &&
     error.message ===
-    "perfect-payload:- transform must not return undefined for attribute username";
+      'transform must not return undefined for attribute "username"';
 }
 
 check(
@@ -2142,8 +2156,11 @@ try {
   );
 } catch (error) {
   nestedCaseConflictThrows =
+    error instanceof TypeError &&
+    error.name === "TypeError [ERR_CONFLICTING_TRANSFORMS]" &&
+    error.code === "ERR_CONFLICTING_TRANSFORMS" &&
     error.message ===
-    "perfect-payload:- lowercase and uppercase cannot both be enabled for attribute profile.username";
+      'lowercase and uppercase cannot both be enabled for attribute "profile.username"';
 }
 
 check(
@@ -2171,8 +2188,11 @@ try {
   );
 } catch (error) {
   arrayCaseConflictThrows =
+    error instanceof TypeError &&
+    error.name === "TypeError [ERR_CONFLICTING_TRANSFORMS]" &&
+    error.code === "ERR_CONFLICTING_TRANSFORMS" &&
     error.message ===
-    "perfect-payload:- lowercase and uppercase cannot both be enabled for attribute names";
+      'lowercase and uppercase cannot both be enabled for attribute "names"';
 }
 
 check(
@@ -3453,8 +3473,11 @@ try {
   );
 } catch (error) {
   transformUndefinedMandatoryThrows =
+    error instanceof TypeError &&
+    error.name === "TypeError [ERR_UNDEFINED_TRANSFORM_RESULT]" &&
+    error.code === "ERR_UNDEFINED_TRANSFORM_RESULT" &&
     error.message ===
-    "perfect-payload:- transform must not return undefined for attribute username";
+      'transform must not return undefined for attribute "username"';
 }
 
 check(
@@ -3488,8 +3511,11 @@ try {
   );
 } catch (error) {
   transformUndefinedBeforeCustomValidatorThrows =
+    error instanceof TypeError &&
+    error.name === "TypeError [ERR_UNDEFINED_TRANSFORM_RESULT]" &&
+    error.code === "ERR_UNDEFINED_TRANSFORM_RESULT" &&
     error.message ===
-    "perfect-payload:- transform must not return undefined for attribute username";
+      'transform must not return undefined for attribute "username"';
 }
 
 check(
@@ -4191,8 +4217,11 @@ try {
   );
 } catch (error) {
   syncApiRejectedAsyncValidator =
+    error instanceof TypeError &&
+    error.name === "TypeError [ERR_ASYNC_CUSTOM_VALIDATOR]" &&
+    error.code === "ERR_ASYNC_CUSTOM_VALIDATOR" &&
     error.message ===
-    "perfect-payload:- customValidator must be synchronous for attribute username";
+      'customValidator must be synchronous for attribute "username"';
 }
 
 check(
@@ -4220,8 +4249,11 @@ try {
   );
 } catch (error) {
   asyncApiRejectedInvalidValidator =
+    error instanceof TypeError &&
+    error.name === "TypeError [ERR_INVALID_CUSTOM_VALIDATOR]" &&
+    error.code === "ERR_INVALID_CUSTOM_VALIDATOR" &&
     error.message ===
-    "perfect-payload:- customValidator must be a function for attribute username";
+      'customValidator must be a function for attribute "username"';
 }
 
 check(
@@ -4959,8 +4991,11 @@ try {
 
 check(
   "v1.8 prettyErrors sync rejects non-boolean option",
-  prettyErrorsSyncConfigError?.message ===
-    "perfect-payload:- prettyErrors must be a boolean",
+  prettyErrorsSyncConfigError instanceof TypeError &&
+    prettyErrorsSyncConfigError.name ===
+      "TypeError [ERR_INVALID_PRETTY_ERRORS]" &&
+    prettyErrorsSyncConfigError.code === "ERR_INVALID_PRETTY_ERRORS" &&
+    prettyErrorsSyncConfigError.message === "prettyErrors must be a boolean",
 );
 
 // --------------------------------------------------
@@ -5066,8 +5101,11 @@ try {
 
 check(
   "v1.8 prettyErrors async rejects non-boolean option",
-  prettyErrorsAsyncConfigError?.message ===
-    "perfect-payload:- prettyErrors must be a boolean",
+  prettyErrorsAsyncConfigError instanceof TypeError &&
+    prettyErrorsAsyncConfigError.name ===
+      "TypeError [ERR_INVALID_PRETTY_ERRORS]" &&
+    prettyErrorsAsyncConfigError.code === "ERR_INVALID_PRETTY_ERRORS" &&
+    prettyErrorsAsyncConfigError.message === "prettyErrors must be a boolean",
 );
 
 // --------------------------------------------------
@@ -5195,8 +5233,10 @@ try {
 
 check(
   "v1.8 framework config rejects missing rule",
-  missingRuleError?.message ===
-    "perfect-payload:- framework rule must be an object",
+  missingRuleError instanceof TypeError &&
+    missingRuleError.name === "TypeError [ERR_INVALID_FRAMEWORK_RULE]" &&
+    missingRuleError.code === "ERR_INVALID_FRAMEWORK_RULE" &&
+    missingRuleError.message === "framework rule must be an object",
 );
 
 // --------------------------------------------------
@@ -5215,8 +5255,10 @@ try {
 
 check(
   "v1.8 framework config rejects null rule",
-  nullRuleError?.message ===
-    "perfect-payload:- framework rule must be an object",
+  nullRuleError instanceof TypeError &&
+    nullRuleError.name === "TypeError [ERR_INVALID_FRAMEWORK_RULE]" &&
+    nullRuleError.code === "ERR_INVALID_FRAMEWORK_RULE" &&
+    nullRuleError.message === "framework rule must be an object",
 );
 
 // --------------------------------------------------
@@ -5235,8 +5277,10 @@ try {
 
 check(
   "v1.8 framework config rejects array rule",
-  arrayRuleError?.message ===
-    "perfect-payload:- framework rule must be an object",
+  arrayRuleError instanceof TypeError &&
+    arrayRuleError.name === "TypeError [ERR_INVALID_FRAMEWORK_RULE]" &&
+    arrayRuleError.code === "ERR_INVALID_FRAMEWORK_RULE" &&
+    arrayRuleError.message === "framework rule must be an object",
 );
 
 // --------------------------------------------------
@@ -5255,8 +5299,11 @@ try {
 
 check(
   "v1.8 framework config rejects empty rule",
-  emptyRuleError?.message ===
-    "perfect-payload:- framework rule must contain at least one request source",
+  emptyRuleError instanceof TypeError &&
+    emptyRuleError.name === "TypeError [ERR_INVALID_FRAMEWORK_RULE]" &&
+    emptyRuleError.code === "ERR_INVALID_FRAMEWORK_RULE" &&
+    emptyRuleError.message ===
+      "framework rule must contain at least one request source",
 );
 
 // --------------------------------------------------
@@ -5281,8 +5328,11 @@ try {
 
 check(
   "v1.8 framework config rejects unsupported request source",
-  unsupportedSourceError?.message ===
-    "perfect-payload:- unsupported request source cookies",
+  unsupportedSourceError instanceof TypeError &&
+    unsupportedSourceError.name ===
+      "TypeError [ERR_UNSUPPORTED_REQUEST_SOURCE]" &&
+    unsupportedSourceError.code === "ERR_UNSUPPORTED_REQUEST_SOURCE" &&
+    unsupportedSourceError.message === 'Unsupported request source "cookies"',
 );
 
 // --------------------------------------------------
@@ -5303,8 +5353,12 @@ try {
 
 check(
   "v1.8 framework config rejects null source rule",
-  nullSourceRuleError?.message ===
-    "perfect-payload:- rule for request source body must be an object",
+  nullSourceRuleError instanceof TypeError &&
+    nullSourceRuleError.name ===
+      "TypeError [ERR_INVALID_REQUEST_SOURCE_RULE]" &&
+    nullSourceRuleError.code === "ERR_INVALID_REQUEST_SOURCE_RULE" &&
+    nullSourceRuleError.message ===
+      `rule for request source "body" must be an object`,
 );
 
 // --------------------------------------------------
@@ -5325,8 +5379,12 @@ try {
 
 check(
   "v1.8 framework config rejects array source rule",
-  arraySourceRuleError?.message ===
-    "perfect-payload:- rule for request source query must be an object",
+  arraySourceRuleError instanceof TypeError &&
+    arraySourceRuleError.name ===
+      "TypeError [ERR_INVALID_REQUEST_SOURCE_RULE]" &&
+    arraySourceRuleError.code === "ERR_INVALID_REQUEST_SOURCE_RULE" &&
+    arraySourceRuleError.message ===
+      'rule for request source "query" must be an object',
 );
 
 // --------------------------------------------------
@@ -5352,8 +5410,10 @@ try {
 
 check(
   "v1.8 framework config rejects non-object options",
-  invalidOptionsError?.message ===
-    "perfect-payload:- framework options must be an object",
+  invalidOptionsError instanceof TypeError &&
+    invalidOptionsError.name === "TypeError [ERR_INVALID_FRAMEWORK_OPTIONS]" &&
+    invalidOptionsError.code === "ERR_INVALID_FRAMEWORK_OPTIONS" &&
+    invalidOptionsError.message === "framework options must be an object",
 );
 
 // --------------------------------------------------
@@ -5691,9 +5751,9 @@ check(
     frameworkPrettyErrors.errors?.length === 2 &&
     frameworkPrettyErrors.errors?.every((error) => typeof error === "string") &&
     frameworkPrettyErrors.errors?.[0] ===
-      "Invalid type for attribute userId, required string value" &&
+      "Invalid type for attribute params.userId, required string value" &&
     frameworkPrettyErrors.errors?.[1] ===
-      "Invalid email format for attribute email",
+      "Invalid email format for attribute body.email",
 );
 
 // --------------------------------------------------
@@ -5828,8 +5888,10 @@ try {
 
 check(
   "v1.8 framework sync propagates core option configuration errors",
-  frameworkCoreConfigError?.message ===
-    "perfect-payload:- prettyErrors must be a boolean",
+  frameworkCoreConfigError instanceof TypeError &&
+    frameworkCoreConfigError.name === "TypeError [ERR_INVALID_PRETTY_ERRORS]" &&
+    frameworkCoreConfigError.code === "ERR_INVALID_PRETTY_ERRORS" &&
+    frameworkCoreConfigError.message === "prettyErrors must be a boolean",
 );
 
 // --------------------------------------------------
@@ -6434,8 +6496,11 @@ try {
 
 check(
   "v1.8 framework async propagates core option configuration errors",
-  frameworkAsyncConfigError?.message ===
-    "perfect-payload:- prettyErrors must be a boolean",
+  frameworkAsyncConfigError instanceof TypeError &&
+    frameworkAsyncConfigError.name ===
+      "TypeError [ERR_INVALID_PRETTY_ERRORS]" &&
+    frameworkAsyncConfigError.code === "ERR_INVALID_PRETTY_ERRORS" &&
+    frameworkAsyncConfigError.message === "prettyErrors must be a boolean",
 );
 
 // ==================================================
@@ -6689,13 +6754,12 @@ function createMockExpressResponse() {
   middleware(req, res, () => {
     nextCalled = true;
   });
-
   check(
     "v1.8 Express sync supports prettyErrors",
     nextCalled === false &&
       res.statusCode === 400 &&
       typeof res.body?.errors?.[0] === "string" &&
-      res.body?.errors?.[0] === "Invalid email format for attribute email",
+      res.body?.errors?.[0] === "Invalid email format for attribute body.email",
   );
 }
 
@@ -6804,8 +6868,10 @@ function createMockExpressResponse() {
 
   check(
     "v1.8 Express validates configuration during middleware creation",
-    configError?.message ===
-      "perfect-payload:- unsupported request source cookies",
+    configError instanceof TypeError &&
+      configError.name === "TypeError [ERR_UNSUPPORTED_REQUEST_SOURCE]" &&
+      configError.code === "ERR_UNSUPPORTED_REQUEST_SOURCE" &&
+      configError.message === 'Unsupported request source "cookies"',
   );
 }
 
@@ -7211,12 +7277,12 @@ function createMockFastifyReply() {
   const reply = createMockFastifyReply();
 
   await hook(request, reply);
-
   check(
     "v1.8 Fastify sync supports prettyErrors",
     reply.statusCode === 400 &&
       typeof reply.body?.errors?.[0] === "string" &&
-      reply.body?.errors?.[0] === "Invalid email format for attribute email",
+      reply.body?.errors?.[0] ===
+        "Invalid email format for attribute body.email",
   );
 }
 
@@ -7324,11 +7390,12 @@ function createMockFastifyReply() {
   } catch (error) {
     configError = error;
   }
-
   check(
     "v1.8 Fastify validates configuration during hook creation",
-    configError?.message ===
-      "perfect-payload:- unsupported request source cookies",
+    configError instanceof TypeError &&
+      configError.name === "TypeError [ERR_UNSUPPORTED_REQUEST_SOURCE]" &&
+      configError.code === "ERR_UNSUPPORTED_REQUEST_SOURCE" &&
+      configError.message === 'Unsupported request source "cookies"',
   );
 }
 
@@ -7931,8 +7998,10 @@ check(
       return false;
     } catch (error) {
       return (
-        error instanceof Error &&
-        error.message.includes("invalid range format for attribute value")
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_INVALID_RANGE]" &&
+        error.code === "ERR_INVALID_RANGE" &&
+        error.message === 'Invalid range format for attribute "value"'
       );
     }
   })(),
@@ -8148,6 +8217,377 @@ check(
   rangeNonNumericString.valid === false &&
     rangeNonNumericString.errors?.[0]?.code === "OUT_OF_RANGE",
 );
+
+// #############
+check(
+  "invalid unknownFields throws node-style configuration error",
+  (() => {
+    try {
+      perfectPayload(
+        { name: "Kiran" },
+        {
+          name: {
+            type: "string",
+          },
+        },
+        {
+          unknownFields: "invalid",
+        },
+      );
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_INVALID_UNKNOWN_FIELDS]" &&
+        error.code === "ERR_INVALID_UNKNOWN_FIELDS" &&
+        error.message ===
+          'unknownFields must be one of "strip", "allow", or "reject"'
+      );
+    }
+  })(),
+);
+
+check(
+  "invalid prettyErrors throws node-style configuration error",
+  (() => {
+    try {
+      perfectPayload(
+        { name: "Kiran" },
+        {
+          name: {
+            type: "string",
+          },
+        },
+        {
+          prettyErrors: "true",
+        },
+      );
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_INVALID_PRETTY_ERRORS]" &&
+        error.code === "ERR_INVALID_PRETTY_ERRORS" &&
+        error.message === "prettyErrors must be a boolean"
+      );
+    }
+  })(),
+);
+
+check(
+  "conflicting transforms throw node-style configuration error",
+  (() => {
+    try {
+      perfectPayload(
+        { name: "Kiran" },
+        {
+          name: {
+            type: "string",
+            lowercase: true,
+            uppercase: true,
+          },
+        },
+      );
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_CONFLICTING_TRANSFORMS]" &&
+        error.code === "ERR_CONFLICTING_TRANSFORMS" &&
+        error.message ===
+          'lowercase and uppercase cannot both be enabled for attribute "name"'
+      );
+    }
+  })(),
+);
+
+check(
+  "invalid transform throws node-style configuration error",
+  (() => {
+    try {
+      perfectPayload(
+        { name: "Kiran" },
+        {
+          name: {
+            type: "string",
+            transform: "invalid",
+          },
+        },
+      );
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_INVALID_TRANSFORM]" &&
+        error.code === "ERR_INVALID_TRANSFORM" &&
+        error.message === 'transform must be a function for attribute "name"'
+      );
+    }
+  })(),
+);
+
+check(
+  "async transform throws node-style configuration error",
+  (() => {
+    try {
+      perfectPayload(
+        { name: "Kiran" },
+        {
+          name: {
+            type: "string",
+            transform: async (value) => value,
+          },
+        },
+      );
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_ASYNC_TRANSFORM]" &&
+        error.code === "ERR_ASYNC_TRANSFORM" &&
+        error.message === 'transform must be synchronous for attribute "name"'
+      );
+    }
+  })(),
+);
+
+check(
+  "undefined transform result throws node-style configuration error",
+  (() => {
+    try {
+      perfectPayload(
+        { name: "Kiran" },
+        {
+          name: {
+            type: "string",
+            transform: () => undefined,
+          },
+        },
+      );
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_UNDEFINED_TRANSFORM_RESULT]" &&
+        error.code === "ERR_UNDEFINED_TRANSFORM_RESULT" &&
+        error.message ===
+          'transform must not return undefined for attribute "name"'
+      );
+    }
+  })(),
+);
+
+check(
+  "invalid range throws node-style configuration error",
+  (() => {
+    try {
+      perfectPayload(
+        { mark: 10 },
+        {
+          mark: {
+            type: "number",
+            range: "invalid",
+          },
+        },
+      );
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_INVALID_RANGE]" &&
+        error.code === "ERR_INVALID_RANGE" &&
+        error.message === 'Invalid range format for attribute "mark"'
+      );
+    }
+  })(),
+);
+
+check(
+  "invalid customValidator throws node-style configuration error",
+  (() => {
+    try {
+      perfectPayload(
+        { name: "Kiran" },
+        {
+          name: {
+            type: "string",
+            customValidator: "invalid",
+          },
+        },
+      );
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_INVALID_CUSTOM_VALIDATOR]" &&
+        error.code === "ERR_INVALID_CUSTOM_VALIDATOR" &&
+        error.message ===
+          'customValidator must be a function for attribute "name"'
+      );
+    }
+  })(),
+);
+
+check(
+  "async customValidator in perfectPayload throws node-style configuration error",
+  (() => {
+    try {
+      perfectPayload(
+        { name: "Kiran" },
+        {
+          name: {
+            type: "string",
+            customValidator: async () => true,
+          },
+        },
+      );
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_ASYNC_CUSTOM_VALIDATOR]" &&
+        error.code === "ERR_ASYNC_CUSTOM_VALIDATOR" &&
+        error.message ===
+          'customValidator must be synchronous for attribute "name"'
+      );
+    }
+  })(),
+);
+
+check(
+  "invalid dependency rule throws node-style configuration error",
+  (() => {
+    try {
+      perfectPayload(
+        {
+          minSalary: 10,
+          maxSalary: 20,
+        },
+        {
+          minSalary: {
+            type: "number",
+            dependency: {
+              maxSalary: {
+                setDependencyRule: "invalid",
+              },
+            },
+          },
+          maxSalary: {
+            type: "number",
+          },
+        },
+      );
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_INVALID_DEPENDENCY_RULE]" &&
+        error.code === "ERR_INVALID_DEPENDENCY_RULE" &&
+        error.message ===
+          'setDependencyRule must be a function for dependency "maxSalary"'
+      );
+    }
+  })(),
+);
+
+import { validatePayload as expressValidatePayload } from "./dist/express.js";
+
+check(
+  "invalid framework rule throws node-style configuration error",
+  (() => {
+    try {
+      expressValidatePayload({
+        rule: "invalid",
+      });
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_INVALID_FRAMEWORK_RULE]" &&
+        error.code === "ERR_INVALID_FRAMEWORK_RULE" &&
+        error.message === "framework rule must be an object"
+      );
+    }
+  })(),
+);
+
+check(
+  "unsupported request source throws node-style configuration error",
+  (() => {
+    try {
+      expressValidatePayload({
+        rule: {
+          cookies: {},
+        },
+      });
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_UNSUPPORTED_REQUEST_SOURCE]" &&
+        error.code === "ERR_UNSUPPORTED_REQUEST_SOURCE" &&
+        error.message === 'Unsupported request source "cookies"'
+      );
+    }
+  })(),
+);
+
+check(
+  "invalid request source rule throws node-style configuration error",
+  (() => {
+    try {
+      expressValidatePayload({
+        rule: {
+          body: "invalid",
+        },
+      });
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_INVALID_REQUEST_SOURCE_RULE]" &&
+        error.code === "ERR_INVALID_REQUEST_SOURCE_RULE" &&
+        error.message === 'rule for request source "body" must be an object'
+      );
+    }
+  })(),
+);
+
+check(
+  "invalid framework options throw node-style configuration error",
+  (() => {
+    try {
+      expressValidatePayload({
+        rule: {
+          body: {},
+        },
+        options: "invalid",
+      });
+
+      return false;
+    } catch (error) {
+      return (
+        error instanceof TypeError &&
+        error.name === "TypeError [ERR_INVALID_FRAMEWORK_OPTIONS]" &&
+        error.code === "ERR_INVALID_FRAMEWORK_OPTIONS" &&
+        error.message === "framework options must be an object"
+      );
+    }
+  })(),
+);
 // ========================================================
 // FINAL RESULT
 // ========================================================
@@ -8157,16 +8597,11 @@ console.log("========================================================");
 console.log("\nRegression execution completed.");
 
 console.log("Inspect any ❌ FAIL entries above before proceeding with release");
-//
-//
+
 //
 // ========================================================
 //
-//
-//
 // PRIVACY / SENSITIVE VALUE LEAK TEST
-//
-//
 //
 // ========================================================
 

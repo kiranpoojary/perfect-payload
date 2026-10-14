@@ -1001,7 +1001,7 @@ reject
 Any other value throws a configuration error:
 
 ```text
-perfect-payload:- unknownFields must be one of strip, allow, reject
+TypeError[ERR_INVALID_UNKNOWN_FIELDS]: unknownFields must be one of "strip", "allow", or "reject"
 ```
 
 This is a configuration error, not a payload validation error.
@@ -1931,7 +1931,7 @@ The transformed value is validated by the normal validation rules and is also th
 For example, returning `undefined` throws:
 
 ```text
-perfect-payload:- transform must not return undefined for attribute username
+TypeError[ERR_UNDEFINED_TRANSFORM_RESULT]: transform must not return undefined for attribute "name"
 ```
 
 ## `customValidator`
@@ -2024,8 +2024,7 @@ default error is:
 `customValidator` works recursively inside `objectAttr` and `elementConstraints`. Structured errors preserve the corresponding nested and array paths. When using `perfectPayload()`, `customValidator` must remain synchronous. A Promise-returning validator throws:
 
 ```text
-perfect-payload:- customValidator must be synchronous for attribute
-username
+TypeError[ERR_ASYNC_CUSTOM_VALIDATOR]: customValidator must be synchronous for attribute "username"
 ```
 
 For asynchronous custom validation, use `perfectPayloadAsync()`.
@@ -2117,7 +2116,7 @@ A configured `customValidator` must be a function. Otherwise an error is
 thrown:
 
 ```text
-perfect-payload:- customValidator must be a function for attribute username
+TypeError[ERR_INVALID_CUSTOM_VALIDATOR]: customValidator must be a function for attribute username
 ```
 
 ### Validation order

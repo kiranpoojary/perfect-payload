@@ -61,7 +61,6 @@ export function validatePayload(config: FrameworkConfig = {}) {
 
 export function validatePayloadAsync(config: FrameworkConfig = {}) {
   const { rule, options = {} } = config;
-
   // Validate developer configuration when middleware is created,
   // not on every incoming request.
   validateFrameworkConfig({

@@ -14,6 +14,7 @@ import type {
   InvalidPayloadResponse,
 } from "./types/results.js";
 import type { ValidationError } from "./types/errors.js";
+import { PerfectPayloadError } from "./errors.js";
 
 type LegacyPayload = Record<string, any>;
 
@@ -568,8 +569,9 @@ export function perfectPayloadV1(
                 rowErrors = [...rowErrors, ...errors];
                 addNextError = true;
               } else {
-                throw new Error(
-                  `perfect-payload:- function setDependencyRule not found in ${attr} dependency `,
+                throw new PerfectPayloadError(
+                  "ERR_INVALID_DEPENDENCY_RULE",
+                  `setDependencyRule must be a function for dependency "${attr}"`,
                 );
               }
             }
@@ -630,12 +632,16 @@ export function perfectPayload<T extends object = Record<string, unknown>>(
   } = options ?? {};
 
   if (!["strip", "allow", "reject"].includes(unknownFields)) {
-    throw new Error(
-      `perfect-payload:- unknownFields must be one of strip, allow, reject`,
+    throw new PerfectPayloadError(
+      "ERR_INVALID_UNKNOWN_FIELDS",
+      'unknownFields must be one of "strip", "allow", or "reject"',
     );
   }
   if (typeof prettyErrors !== "boolean") {
-    throw new Error(`perfect-payload:- prettyErrors must be a boolean`);
+    throw new PerfectPayloadError(
+      "ERR_INVALID_PRETTY_ERRORS",
+      "prettyErrors must be a boolean",
+    );
   }
   const validationResult = perfectPayloadStructured<T>(
     data,
@@ -748,14 +754,17 @@ export async function perfectPayloadAsync<
     unknownFields = "strip",
     prettyErrors = false,
   } = options ?? {};
-
   if (!["strip", "allow", "reject"].includes(unknownFields)) {
-    throw new Error(
-      `perfect-payload:- unknownFields must be one of strip, allow, reject`,
+    throw new PerfectPayloadError(
+      "ERR_INVALID_UNKNOWN_FIELDS",
+      'unknownFields must be one of "strip", "allow", or "reject"',
     );
   }
   if (typeof prettyErrors !== "boolean") {
-    throw new Error(`perfect-payload:- prettyErrors must be a boolean`);
+    throw new PerfectPayloadError(
+      "ERR_INVALID_PRETTY_ERRORS",
+      "prettyErrors must be a boolean",
+    );
   }
   const validationResult = perfectPayloadStructured<T>(
     data,
@@ -936,8 +945,9 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
       attributeRules?.lowercase === true &&
       attributeRules?.uppercase === true
     ) {
-      throw new Error(
-        `perfect-payload:- lowercase and uppercase cannot both be enabled for attribute ${attributePath}`,
+      throw new PerfectPayloadError(
+        "ERR_CONFLICTING_TRANSFORMS",
+        `lowercase and uppercase cannot both be enabled for attribute "${attributePath}"`,
       );
     }
     // TRIM
@@ -982,8 +992,9 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
       const transformer = attributeRules.transform;
 
       if (typeof transformer !== "function") {
-        throw new Error(
-          `perfect-payload:- transform must be a function for attribute ${attributePath}`,
+        throw new PerfectPayloadError(
+          "ERR_INVALID_TRANSFORM",
+          `transform must be a function for attribute "${attributePath}"`,
         );
       }
 
@@ -1002,14 +1013,16 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
         "then" in transformedValue &&
         typeof transformedValue.then === "function"
       ) {
-        throw new Error(
-          `perfect-payload:- transform must be synchronous for attribute ${attributePath}`,
+        throw new PerfectPayloadError(
+          "ERR_ASYNC_TRANSFORM",
+          `transform must be synchronous for attribute "${attributePath}"`,
         );
       }
 
       if (transformedValue === undefined) {
-        throw new Error(
-          `perfect-payload:- transform must not return undefined for attribute ${attributePath}`,
+        throw new PerfectPayloadError(
+          "ERR_UNDEFINED_TRANSFORM_RESULT",
+          `transform must not return undefined for attribute "${attributePath}"`,
         );
       }
 
@@ -1634,7 +1647,6 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
 
           break;
         }
-
         case "range": {
           if (!addNextError) {
             break;
@@ -1653,8 +1665,9 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
           const rangeMatch = colonRangeMatch ?? legacyHyphenRangeMatch;
 
           if (!rangeMatch) {
-            throw new Error(
-              `perfect-payload:- invalid range format for attribute ${attributePath}`,
+            throw new PerfectPayloadError(
+              "ERR_INVALID_RANGE",
+              `Invalid range format for attribute "${attributePath}"`,
             );
           }
 
@@ -1712,7 +1725,6 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
 
           break;
         }
-
         case "objectAttr": {
           const objectAttr = attributeRules.objectAttr;
 
@@ -1792,8 +1804,9 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
 
                 addNextError = true;
               } else {
-                throw new Error(
-                  `perfect-payload:- function setDependencyRule not found in ${attr} dependency `,
+                throw new PerfectPayloadError(
+                  "ERR_INVALID_DEPENDENCY_RULE",
+                  `setDependencyRule must be a function for dependency "${attr}"`,
                 );
               }
             }
@@ -1811,8 +1824,9 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
             const validator = attributeRules?.[ruleName];
 
             if (typeof validator !== "function") {
-              throw new Error(
-                `perfect-payload:- customValidator must be a function for attribute ${attributePath}`,
+              throw new PerfectPayloadError(
+                "ERR_INVALID_CUSTOM_VALIDATOR",
+                `customValidator must be a function for attribute "${attributePath}"`,
               );
             }
 
@@ -1823,8 +1837,9 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
               "then" in validationResult &&
               typeof validationResult.then === "function"
             ) {
-              throw new Error(
-                `perfect-payload:- customValidator must be synchronous for attribute ${attributePath}`,
+              throw new PerfectPayloadError(
+                "ERR_ASYNC_CUSTOM_VALIDATOR",
+                `customValidator must be synchronous for attribute "${attributePath}"`,
               );
             }
 
@@ -2072,8 +2087,9 @@ async function runAsyncCustomValidators(
       )
     ) {
       if (typeof attributeRules.customValidator !== "function") {
-        throw new Error(
-          `perfect-payload:- customValidator must be a function for attribute ${attributePath}`,
+        throw new PerfectPayloadError(
+          "ERR_INVALID_CUSTOM_VALIDATOR",
+          `customValidator must be a function for attribute "${attributePath}"`,
         );
       }
 
