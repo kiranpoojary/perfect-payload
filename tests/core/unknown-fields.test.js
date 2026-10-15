@@ -177,45 +177,47 @@ describe("Core - Unknown Fields", () => {
         }),
       ]);
     });
-  });
-  test("unknownFields rejects unsupported option value", () => {
-    expect(() =>
-      perfectPayload(
+
+    test("unknownFields rejects unsupported option value", () => {
+      expect(() =>
+        perfectPayload(
+          { name: "Kiran" },
+          {
+            name: {
+              type: "string",
+            },
+          },
+          {
+            unknownFields: "invalid",
+          },
+        ),
+      ).toThrow(
+        expect.objectContaining({
+          name: "TypeError [ERR_INVALID_UNKNOWN_FIELDS]",
+          code: "ERR_INVALID_UNKNOWN_FIELDS",
+          message: 'unknownFields must be one of "strip", "allow", or "reject"',
+        }),
+      );
+    });
+    test("unknownFields reject allows missing optional fields", () => {
+      const result = perfectPayload(
         { name: "Kiran" },
         {
-          name: {
-            type: "string",
-          },
+          name: { type: "string" },
+          nickname: { type: "string" },
         },
         {
-          unknownFields: "invalid",
+          unknownFields: "reject",
         },
-      ),
-    ).toThrow(
-      expect.objectContaining({
-        name: "TypeError [ERR_INVALID_UNKNOWN_FIELDS]",
-        code: "ERR_INVALID_UNKNOWN_FIELDS",
-        message: 'unknownFields must be one of "strip", "allow", or "reject"',
-      }),
-    );
-  });
-  test("unknownFields reject allows missing optional fields", () => {
-    const result = perfectPayload(
-      { name: "Kiran" },
-      {
-        name: { type: "string" },
-        nickname: { type: "string" },
-      },
-      {
-        unknownFields: "reject",
-      },
-    );
+      );
 
-    expect(result.valid).toBe(true);
-    expect(result.validatedPayload).toEqual({
-      name: "Kiran",
+      expect(result.valid).toBe(true);
+      expect(result.validatedPayload).toEqual({
+        name: "Kiran",
+      });
     });
   });
+
   describe("Unknown Fields - Inherited Properties", () => {
     const payload = Object.create({
       inheritedField: "should-not-be-processed",
@@ -262,105 +264,106 @@ describe("Core - Unknown Fields", () => {
         }),
       );
     });
-  });
-  test("v1.7 unknownFields reject returns indexed array path", () => {
-    const result = perfectPayload(
-      {
-        products: [
-          {
-            name: "iPhone",
-            price: 80000,
-            internalId: "A001",
-          },
-        ],
-      },
-      {
-        products: {
-          type: "array",
-          elementConstraints: {
-            type: "object",
-            objectAttr: {
-              name: { type: "string" },
-              price: { type: "number" },
+
+    test("v1.7 unknownFields reject returns indexed array path", () => {
+      const result = perfectPayload(
+        {
+          products: [
+            {
+              name: "iPhone",
+              price: 80000,
+              internalId: "A001",
+            },
+          ],
+        },
+        {
+          products: {
+            type: "array",
+            elementConstraints: {
+              type: "object",
+              objectAttr: {
+                name: { type: "string" },
+                price: { type: "number" },
+              },
             },
           },
         },
-      },
-      {
-        unknownFields: "reject",
-      },
-    );
+        {
+          unknownFields: "reject",
+        },
+      );
 
-    expect(result.valid).toBe(false);
-    expect(result.errors?.[0]).toEqual(
-      expect.objectContaining({
+      expect(result.valid).toBe(false);
+      expect(result.errors?.[0]).toEqual(
+        expect.objectContaining({
+          path: "products[0].internalId",
+          code: "UNKNOWN_FIELD",
+        }),
+      );
+    });
+    test("v1.8 prettyErrors works with unknownFields reject", () => {
+      const result = perfectPayload(
+        {
+          name: "Kiran",
+          role: "developer",
+        },
+        {
+          name: {
+            type: "string",
+          },
+        },
+        {
+          unknownFields: "reject",
+          prettyErrors: true,
+        },
+      );
+
+      expect(result.valid).toBe(false);
+      expect(result.errors).toEqual(["Unknown field role is not allowed"]);
+    });
+    test("v1.7 unknown field inside array includes index in path and message", () => {
+      const result = perfectPayload(
+        {
+          products: [
+            {
+              productId: "P100",
+              quantity: 2,
+              internalId: "INT-100",
+            },
+          ],
+        },
+        {
+          products: {
+            mandatory: true,
+            type: "array",
+            elementConstraints: {
+              type: "object",
+              objectAttr: {
+                productId: {
+                  mandatory: true,
+                  type: "string",
+                },
+                quantity: {
+                  mandatory: true,
+                  type: "number",
+                },
+              },
+            },
+          },
+        },
+        {
+          unknownFields: "reject",
+        },
+      );
+
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+
+      expect(result.errors[0]).toEqual({
         path: "products[0].internalId",
         code: "UNKNOWN_FIELD",
-      }),
-    );
-  });
-  test("v1.8 prettyErrors works with unknownFields reject", () => {
-    const result = perfectPayload(
-      {
-        name: "Kiran",
-        role: "developer",
-      },
-      {
-        name: {
-          type: "string",
-        },
-      },
-      {
-        unknownFields: "reject",
-        prettyErrors: true,
-      },
-    );
-
-    expect(result.valid).toBe(false);
-    expect(result.errors).toEqual(["Unknown field role is not allowed"]);
-  });
-  test("v1.7 unknown field inside array includes index in path and message", () => {
-    const result = perfectPayload(
-      {
-        products: [
-          {
-            productId: "P100",
-            quantity: 2,
-            internalId: "INT-100",
-          },
-        ],
-      },
-      {
-        products: {
-          mandatory: true,
-          type: "array",
-          elementConstraints: {
-            type: "object",
-            objectAttr: {
-              productId: {
-                mandatory: true,
-                type: "string",
-              },
-              quantity: {
-                mandatory: true,
-                type: "number",
-              },
-            },
-          },
-        },
-      },
-      {
-        unknownFields: "reject",
-      },
-    );
-
-    expect(result.valid).toBe(false);
-    expect(result.errors).toHaveLength(1);
-
-    expect(result.errors[0]).toEqual({
-      path: "products[0].internalId",
-      code: "UNKNOWN_FIELD",
-      message: "Unknown field products[0].internalId is not allowed",
+        message: "Unknown field products[0].internalId is not allowed",
+      });
     });
   });
 });

@@ -467,4 +467,55 @@ describe("Express - Synchronous Middleware", () => {
       }),
     );
   });
+
+  test("Express returns transform result type mismatch error", () => {
+    const middleware = validatePayload({
+      rule: {
+        body: {
+          age: {
+            type: "number",
+            mandatory: true,
+            transform: (age) => String(age),
+          },
+        },
+      },
+    });
+
+    const req = {
+      headers: {},
+      params: {},
+      query: {},
+      body: { age: 27 },
+    };
+
+    const res = {
+      statusCode: null,
+      body: null,
+
+      status(code) {
+        this.statusCode = code;
+        return this;
+      },
+
+      json(body) {
+        this.body = body;
+        return this;
+      },
+    };
+
+    const next = jest.fn();
+
+    middleware(req, res, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(400);
+    expect(res.body?.errors).toEqual([
+      expect.objectContaining({
+        path: "body.age",
+        code: "INVALID_TRANSFORM_RESULT_TYPE",
+        message:
+          "Invalid transform result type for attribute body.age: expected number, received string",
+      }),
+    ]);
+  });
 });
