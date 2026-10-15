@@ -436,4 +436,53 @@ describe("Fastify - Synchronous Hooks", () => {
       }),
     );
   });
+  test("Fastify returns transform result type mismatch error", async () => {
+    const hook = validatePayload({
+      rule: {
+        body: {
+          age: {
+            type: "number",
+            mandatory: true,
+            transform: (age) => String(age),
+          },
+        },
+      },
+    });
+
+    const request = {
+      headers: {},
+      params: {},
+      query: {},
+      body: { age: 27 },
+    };
+
+    const reply = {
+      statusCode: null,
+      body: null,
+
+      code(statusCode) {
+        this.statusCode = statusCode;
+        return this;
+      },
+
+      send(body) {
+        this.body = body;
+        return this;
+      },
+    };
+
+    await hook(request, reply);
+
+    expect(reply.statusCode).toBe(400);
+    expect(reply.body?.valid).toBe(false);
+
+    expect(reply.body?.errors).toEqual([
+      expect.objectContaining({
+        path: "body.age",
+        code: "INVALID_TRANSFORM_RESULT_TYPE",
+        message:
+          "Invalid transform result type for attribute body.age: expected number, received string",
+      }),
+    ]);
+  });
 });
