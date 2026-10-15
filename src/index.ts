@@ -1179,12 +1179,25 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
                       message: attributeRules["elementConstraintsError"],
                     };
                   } else {
+                    const originalPath = firstElementError.path;
+
+                    const indexedMessage = firstElementError.message
+                      .replace(
+                        `for attribute ${originalPath}:`,
+                        `for attribute ${indexedPath}:`,
+                      )
+                      .replace(
+                        `for attribute ${originalPath},`,
+                        `for attribute ${indexedPath},`,
+                      );
+
                     elementError = {
                       ...firstElementError,
                       path: indexedPath,
-                      ...(firstElementError.code === "UNKNOWN_FIELD" && {
-                        message: `Unknown field ${indexedPath} is not allowed`,
-                      }),
+                      message:
+                        firstElementError.code === "UNKNOWN_FIELD"
+                          ? `Unknown field ${indexedPath} is not allowed`
+                          : indexedMessage,
                     };
                   }
 
