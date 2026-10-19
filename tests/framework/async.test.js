@@ -24,131 +24,6 @@ describe("Framework - Asynchronous Source Aggregation", () => {
     });
   });
 
-  describe("Multiple Sources - Success", () => {
-    const config = {
-      data: {
-        headers: { authorization: "Bearer token" },
-        params: { userId: "123" },
-        query: { search: "phone" },
-        body: { username: "kiran" },
-      },
-      rule: {
-        body: {
-          username: {
-            type: "string",
-            customValidator: async () => true,
-          },
-        },
-        query: {
-          search: {
-            type: "string",
-            customValidator: async () => true,
-          },
-        },
-        params: {
-          userId: {
-            type: "string",
-            customValidator: async () => true,
-          },
-        },
-        headers: {
-          authorization: {
-            type: "string",
-            customValidator: async () => true,
-          },
-        },
-      },
-    };
-
-    test("v1.8 framework async validates multiple sources", async () => {
-      const result = await validateFrameworkSourcesAsync(config);
-
-      expect(result.valid).toBe(true);
-      expect(result.validatedPayload).toEqual(config.data);
-    });
-
-    test("v1.8 framework async returns sources in standard order", async () => {
-      const result = await validateFrameworkSourcesAsync(config);
-
-      expect(Object.keys(result.validatedPayload)).toEqual([
-        "headers",
-        "params",
-        "query",
-        "body",
-      ]);
-    });
-  });
-
-  describe("Multiple Sources - Error Aggregation", () => {
-    const config = {
-      data: {
-        headers: { authorization: "invalid-token" },
-        params: { userId: "123" },
-        query: { search: "phone" },
-        body: { username: "taken-user" },
-      },
-      rule: {
-        body: {
-          username: {
-            type: "string",
-            customValidator: async () => false,
-            customValidatorError: "Username is already taken",
-          },
-        },
-        query: {
-          search: {
-            type: "string",
-            customValidator: async () => false,
-            customValidatorError: "Search is not allowed",
-          },
-        },
-        params: {
-          userId: {
-            type: "string",
-            customValidator: async () => false,
-            customValidatorError: "User does not exist",
-          },
-        },
-        headers: {
-          authorization: {
-            type: "string",
-            customValidator: async () => false,
-            customValidatorError: "Authorization failed",
-          },
-        },
-      },
-    };
-
-    test("v1.8 framework async aggregates errors from all sources", async () => {
-      const result = await validateFrameworkSourcesAsync(config);
-
-      expect(result.valid).toBe(false);
-      expect(result.errors).toHaveLength(4);
-    });
-
-    test("v1.8 framework async prefixes structured error paths", async () => {
-      const result = await validateFrameworkSourcesAsync(config);
-
-      expect(result.errors.map((error) => error.path)).toEqual([
-        "headers.authorization",
-        "params.userId",
-        "query.search",
-        "body.username",
-      ]);
-    });
-
-    test("v1.8 framework async preserves deterministic error order", async () => {
-      const result = await validateFrameworkSourcesAsync(config);
-
-      expect(result.errors.map((error) => error.message)).toEqual([
-        "Authorization failed",
-        "User does not exist",
-        "Search is not allowed",
-        "Username is already taken",
-      ]);
-    });
-  });
-
   test("v1.8 framework async completion order does not affect error order", async () => {
     const makeRule = (delay, message) => ({
       value: {
@@ -416,5 +291,130 @@ describe("Framework - Asynchronous Source Aggregation", () => {
       code: "ERR_INVALID_PRETTY_ERRORS",
       message: "prettyErrors must be a boolean",
     });
+  });
+});
+
+describe("Multiple Sources - Success", () => {
+  const config = {
+    data: {
+      headers: { authorization: "Bearer token" },
+      params: { userId: "123" },
+      query: { search: "phone" },
+      body: { username: "kiran" },
+    },
+    rule: {
+      body: {
+        username: {
+          type: "string",
+          customValidator: async () => true,
+        },
+      },
+      query: {
+        search: {
+          type: "string",
+          customValidator: async () => true,
+        },
+      },
+      params: {
+        userId: {
+          type: "string",
+          customValidator: async () => true,
+        },
+      },
+      headers: {
+        authorization: {
+          type: "string",
+          customValidator: async () => true,
+        },
+      },
+    },
+  };
+
+  test("v1.8 framework async validates multiple sources", async () => {
+    const result = await validateFrameworkSourcesAsync(config);
+
+    expect(result.valid).toBe(true);
+    expect(result.validatedPayload).toEqual(config.data);
+  });
+
+  test("v1.8 framework async returns sources in standard order", async () => {
+    const result = await validateFrameworkSourcesAsync(config);
+
+    expect(Object.keys(result.validatedPayload)).toEqual([
+      "headers",
+      "params",
+      "query",
+      "body",
+    ]);
+  });
+});
+
+describe("Multiple Sources - Error Aggregation", () => {
+  const config = {
+    data: {
+      headers: { authorization: "invalid-token" },
+      params: { userId: "123" },
+      query: { search: "phone" },
+      body: { username: "taken-user" },
+    },
+    rule: {
+      body: {
+        username: {
+          type: "string",
+          customValidator: async () => false,
+          customValidatorError: "Username is already taken",
+        },
+      },
+      query: {
+        search: {
+          type: "string",
+          customValidator: async () => false,
+          customValidatorError: "Search is not allowed",
+        },
+      },
+      params: {
+        userId: {
+          type: "string",
+          customValidator: async () => false,
+          customValidatorError: "User does not exist",
+        },
+      },
+      headers: {
+        authorization: {
+          type: "string",
+          customValidator: async () => false,
+          customValidatorError: "Authorization failed",
+        },
+      },
+    },
+  };
+
+  test("v1.8 framework async aggregates errors from all sources", async () => {
+    const result = await validateFrameworkSourcesAsync(config);
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toHaveLength(4);
+  });
+
+  test("v1.8 framework async prefixes structured error paths", async () => {
+    const result = await validateFrameworkSourcesAsync(config);
+
+    expect(result.errors.map((error) => error.path)).toEqual([
+      "headers.authorization",
+      "params.userId",
+      "query.search",
+      "body.username",
+    ]);
+  });
+
+  test("v1.8 framework async preserves deterministic error order", async () => {
+    const result = await validateFrameworkSourcesAsync(config);
+
+    expect(result.errors.map((error) => error.message)).toEqual([
+      "Authorization failed",
+      "User does not exist",
+      "Search is not allowed",
+      "Username is already taken",
+    ]);
   });
 });
