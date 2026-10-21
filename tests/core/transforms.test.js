@@ -637,7 +637,7 @@ describe("Transform Result Type Mismatch - Additional Types", () => {
   });
   // TODO: Separate bug - array elementConstraints loses the index(path)
   // in the error message. Preserve this regression for a future fix.
-  test.skip("transform result type mismatch preserves indexed array path", () => {
+  test("transform result type mismatch preserves indexed array path", () => {
     const result = perfectPayload(
       {
         products: [{ name: "Laptop", price: 50000 }],
@@ -667,6 +667,283 @@ describe("Transform Result Type Mismatch - Additional Types", () => {
         code: "INVALID_TRANSFORM_RESULT_TYPE",
         message:
           "Invalid transform result type for attribute products[0].price: expected number, received string",
+      }),
+    ]);
+  });
+  test("array element transform mismatch preserves custom typeError", () => {
+    const result = perfectPayload(
+      {
+        products: [{ price: 50000 }],
+      },
+      {
+        products: {
+          type: "array",
+          elementConstraints: {
+            type: "object",
+            objectAttr: {
+              price: {
+                type: "number",
+                transform: (price) => String(price),
+                typeError: "Price must remain a number",
+              },
+            },
+          },
+        },
+      },
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual([
+      expect.objectContaining({
+        path: "products[0].price",
+        code: "INVALID_TRANSFORM_RESULT_TYPE",
+        message: "Price must remain a number",
+      }),
+    ]);
+  });
+  test("array element invalid type includes index in error message", () => {
+    const result = perfectPayload(
+      {
+        products: [{ price: "invalid" }],
+      },
+      {
+        products: {
+          type: "array",
+          elementConstraints: {
+            type: "object",
+            objectAttr: {
+              price: {
+                type: "number",
+              },
+            },
+          },
+        },
+      },
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual([
+      expect.objectContaining({
+        path: "products[0].price",
+        code: "INVALID_TYPE",
+        message:
+          "Invalid type for attribute products[0].price, required number value",
+      }),
+    ]);
+  });
+  test("array element mandatory error includes indexed path in message", () => {
+    const result = perfectPayload(
+      {
+        products: [{}],
+      },
+      {
+        products: {
+          type: "array",
+          elementConstraints: {
+            type: "object",
+            objectAttr: {
+              price: {
+                type: "number",
+                mandatory: true,
+              },
+            },
+          },
+        },
+      },
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual([
+      expect.objectContaining({
+        path: "products[0].price",
+        code: "REQUIRED",
+        message: "products[0].price is mandatory",
+      }),
+    ]);
+  });
+  test("array element null validation error includes indexed path", () => {
+    const result = perfectPayload(
+      {
+        products: [{ price: null }],
+      },
+      {
+        products: {
+          type: "array",
+          elementConstraints: {
+            type: "object",
+            objectAttr: {
+              price: {
+                type: "number",
+                allowNull: false,
+              },
+            },
+          },
+        },
+      },
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual([
+      expect.objectContaining({
+        path: "products[0].price",
+        message: "value null not valid for attribute products[0].price",
+      }),
+    ]);
+  });
+  test("array element minLength error includes indexed path", () => {
+    const result = perfectPayload(
+      {
+        products: [{ name: "AB" }],
+      },
+      {
+        products: {
+          type: "array",
+          elementConstraints: {
+            type: "object",
+            objectAttr: {
+              name: {
+                type: "string",
+                minLength: 5,
+              },
+            },
+          },
+        },
+      },
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual([
+      expect.objectContaining({
+        path: "products[0].name",
+        message: "products[0].name should be minimum of 5 character",
+      }),
+    ]);
+  });
+  test("array element minimum value error includes indexed path", () => {
+    const result = perfectPayload(
+      {
+        products: [{ price: 5 }],
+      },
+      {
+        products: {
+          type: "array",
+          elementConstraints: {
+            type: "object",
+            objectAttr: {
+              price: {
+                type: "number",
+                min: 10,
+              },
+            },
+          },
+        },
+      },
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual([
+      expect.objectContaining({
+        path: "products[0].price",
+        message: "Minimum value 10 is allowed in attribute products[0].price",
+      }),
+    ]);
+  });
+  test("array element regex error includes indexed path", () => {
+    const result = perfectPayload(
+      {
+        products: [{ sku: "abc123" }],
+      },
+      {
+        products: {
+          type: "array",
+          elementConstraints: {
+            type: "object",
+            objectAttr: {
+              sku: {
+                type: "string",
+                regex: /^[A-Z]+$/,
+              },
+            },
+          },
+        },
+      },
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual([
+      expect.objectContaining({
+        path: "products[0].sku",
+        message: "products[0].sku failed to pass the regex /^[A-Z]+$/",
+      }),
+    ]);
+  });
+  test("array element range error includes indexed path", () => {
+    const result = perfectPayload(
+      {
+        products: [{ price: 150 }],
+      },
+      {
+        products: {
+          type: "array",
+          elementConstraints: {
+            type: "object",
+            objectAttr: {
+              price: {
+                type: "number",
+                range: [10, 100],
+              },
+            },
+          },
+        },
+      },
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual([
+      expect.objectContaining({
+        path: "products[0].price",
+        message:
+          "Attribute products[0].price should have a numeric value between 10 and 100",
+      }),
+    ]);
+  });
+  test("nested array validation error includes all indices in message", () => {
+    const result = perfectPayload(
+      {
+        orders: [
+          {
+            items: [{ price: 100 }, { price: "invalid" }],
+          },
+        ],
+      },
+      {
+        orders: {
+          type: "array",
+          elementConstraints: {
+            type: "object",
+            objectAttr: {
+              items: {
+                type: "array",
+                elementConstraints: {
+                  type: "object",
+                  objectAttr: {
+                    price: { type: "number" },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual([
+      expect.objectContaining({
+        path: "orders[0].items[1].price",
+        code: "INVALID_TYPE",
+        message:
+          "Invalid type for attribute orders[0].items[1].price, required number value",
       }),
     ]);
   });
