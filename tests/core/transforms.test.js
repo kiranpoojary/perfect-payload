@@ -756,7 +756,7 @@ describe("Transform Result Type Mismatch - Additional Types", () => {
     expect(result.errors).toEqual([
       expect.objectContaining({
         path: "products[0].price",
-        code: "MANDATORY_FIELD_MISSING",
+        code: "REQUIRED",
         message: "products[0].price is mandatory",
       }),
     ]);

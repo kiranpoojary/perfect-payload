@@ -1181,19 +1181,21 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
                   } else {
                     const originalPath = firstElementError.path;
 
-                    const indexedMessage = firstElementError.message
-                      .replace(
-                        `for attribute ${originalPath}:`,
-                        `for attribute ${indexedPath}:`,
-                      )
-                      .replace(
-                        `for attribute ${originalPath},`,
-                        `for attribute ${indexedPath},`,
-                      );
+                    const indexedMessage = firstElementError.message.replaceAll(
+                      originalPath,
+                      indexedPath,
+                    );
+
+                    const isElementItselfRequired =
+                      firstElementError.code === "REQUIRED" &&
+                      originalPath === attributeName;
 
                     elementError = {
                       ...firstElementError,
                       path: indexedPath,
+                      code: isElementItselfRequired
+                        ? "REQUIRED"
+                        : firstElementError.code,
                       message:
                         firstElementError.code === "UNKNOWN_FIELD"
                           ? `Unknown field ${indexedPath} is not allowed`
@@ -1631,12 +1633,16 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
 
           break;
         }
+
         case "range": {
           if (!addNextError) {
             break;
           }
 
-          const rangeValue = String(attributeRules.range);
+          const range = attributeRules.range;
+          const isArrayRange = Array.isArray(range);
+
+          const rangeValue = isArrayRange ? range.join(":") : String(range);
 
           const colonRangeMatch = rangeValue.match(
             /^\s*([+-]?\d+(?:\.\d+)?)\s*:\s*([+-]?\d+(?:\.\d+)?)\s*$/,
@@ -1661,6 +1667,10 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
           const min = Math.min(firstBoundary, secondBoundary);
           const max = Math.max(firstBoundary, secondBoundary);
 
+          const defaultRangeMessage = isArrayRange
+            ? `Attribute ${attributePath} should have a numeric value between ${min} and ${max}`
+            : `Attribute ${attributePath} should have a value between ${min} and ${max}`;
+
           let rangeComparableValue: number;
 
           if (typeof attributeValue === "number") {
@@ -1673,8 +1683,7 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
                 rowErrors,
                 attributePath,
                 "OUT_OF_RANGE",
-                attributeRules.rangeError ??
-                  `Attribute ${attributePath} should have a numeric value between ${min} and ${max}`,
+                attributeRules.rangeError ?? defaultRangeMessage,
               );
 
               addNextError = false;
@@ -1687,8 +1696,7 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
               rowErrors,
               attributePath,
               "OUT_OF_RANGE",
-              attributeRules.rangeError ??
-                `Attribute ${attributePath} should have a numeric value between ${min} and ${max}`,
+              attributeRules.rangeError ?? defaultRangeMessage,
             );
 
             addNextError = false;
@@ -1700,8 +1708,7 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
               rowErrors,
               attributePath,
               "OUT_OF_RANGE",
-              attributeRules.rangeError ??
-                `Attribute ${attributePath} should have a value between ${min} and ${max}`,
+              attributeRules.rangeError ?? defaultRangeMessage,
             );
 
             addNextError = false;
@@ -1709,6 +1716,7 @@ function perfectPayloadStructured<T extends object = Record<string, unknown>>(
 
           break;
         }
+
         case "objectAttr": {
           const objectAttr = attributeRules.objectAttr;
 
