@@ -1755,6 +1755,8 @@ Transformations applied inside nested objects or array elements are preserved in
 
 `perfectPayload()` can transform a field before its remaining validation rules run. The transformed value is returned in `validatedPayload`, while the original input object is not mutated.
 
+**NOTE:** if transform exist then all validation rules are applied to the **transformed value**, not the original input value.
+
 Supported transformation rules:
 
 | Rule        | Purpose                                               |
